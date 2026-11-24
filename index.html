@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>비엠아이티 개발협의 현황</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<section id="view-login" hidden>
+  <form class="login" id="login-form">
+    <div>
+      <div class="eyebrow">BMIT 개발협의 보드</div>
+      <h1 id="login-title">로그인</h1>
+    </div>
+    <label class="f">이메일<input id="l-email" type="email" autocomplete="email" required></label>
+    <label class="f">비밀번호<input id="l-pw" type="password" autocomplete="current-password" minlength="8" required></label>
+    <label class="f" id="l-pw2-wrap" hidden>비밀번호 확인<input id="l-pw2" type="password" autocomplete="new-password" minlength="8"></label>
+    <div class="err" id="l-err" role="alert"></div>
+    <button class="btn primary" type="submit" id="l-submit">로그인</button>
+    <div class="hint" id="l-switch-wrap">처음 오셨나요? <button type="button" class="linkbtn" id="l-switch">비밀번호 만들기</button></div>
+    <div class="hint">관리자가 등록한 이메일만 들어올 수 있습니다. 비밀번호를 잊으면 관리자에게 초기화를 요청해 주세요.</div>
+  </form>
+</section>
+
+<div class="wrap" id="view-app" hidden>
+  <header class="top">
+    <div>
+      <div class="eyebrow">BMIT 개발협의 보드</div>
+      <h1>비엠아이티 개발협의 현황</h1>
+    </div>
+    <div class="who"><span id="who"></span> · <button class="linkbtn" id="logout">로그아웃</button></div>
+  </header>
+  <div class="notice" id="notice" hidden></div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tab-req" aria-selected="true">요청 현황<span class="cnt" id="cnt-req">0</span></button>
+    <button role="tab" id="tab-sv" aria-selected="false">수요조사<span class="cnt" id="cnt-sv">0</span></button>
+    <button role="tab" id="tab-mem" aria-selected="false" hidden>참여자<span class="cnt" id="cnt-mem">0</span></button>
+  </nav>
+
+  <section id="view-req">
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="strip" id="strip"></div>
+      <div class="toolbar">
+        <input type="search" id="q" placeholder="제목, 분류, 담당자로 검색">
+        <button class="btn primary" id="new-req">새 요청 등록</button>
+      </div>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>번호</th><th>요청 내용</th><th>상태</th><th>우선순위</th><th>요청자</th><th>BMIT 담당</th><th>요청일</th><th>기한</th><th>기록</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-sv" hidden>
+    <div class="survey">
+      <p class="notice" style="margin:0">BMIT에 맡길 만한 개발 아이디어를 올리고, 필요하다고 생각하면 <b>필요해요</b>를 눌러 주세요. 표가 많은 항목부터 정식 요청으로 전환합니다.</p>
+      <form class="sv-new" id="sv-form">
+        <label class="f">항목<input id="sv-title" required maxlength="200" placeholder="예: 거래처별 매출 리포트 자동화"></label>
+        <label class="f">설명 (선택)<input id="sv-desc" maxlength="1000" placeholder="어떤 업무가 편해지는지"></label>
+        <button class="btn primary" type="submit">수요 항목 추가</button>
+      </form>
+      <div id="sv-list" class="survey"></div>
+    </div>
+  </section>
+
+  <section id="view-mem" hidden>
+    <div class="survey">
+      <p class="notice" style="margin:0">여기 등록된 이메일만 사이트에 가입하고 들어올 수 있습니다. BMIT 담당자는 소속을 <b>BMIT</b>로 등록하면 협의 기록에 업체 쪽으로 표시됩니다.</p>
+      <form class="mem-form" id="mem-form">
+        <label class="f">이메일<input id="m-email" type="email" required></label>
+        <label class="f">이름<input id="m-name" maxlength="50" required></label>
+        <label class="f">소속<select id="m-side"><option value="우리">우리 측</option><option value="BMIT">BMIT</option></select></label>
+        <label class="check"><input type="checkbox" id="m-admin"> 관리자</label>
+        <button class="btn primary" type="submit">참여자 추가</button>
+      </form>
+      <div class="tablebox">
+        <table style="min-width:560px">
+          <thead><tr><th>이름</th><th>이메일</th><th>소속</th><th>권한</th><th></th></tr></thead>
+          <tbody id="mem-rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="panel" id="panel" hidden aria-label="요청 상세"></aside>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
