@@ -14,10 +14,10 @@
 
 1. https://supabase.com 에 가입하고 **New project**를 만듭니다. Region은 `Northeast Asia (Seoul)`을 고릅니다.
 2. 왼쪽 메뉴 **SQL Editor**를 열고 `supabase/schema.sql` 내용을 통째로 붙여넣습니다.
-   맨 아래 `YOUR_EMAIL@example.com`과 `관리자 이름`을 본인 것으로 바꾼 뒤 **Run**을 누릅니다.
+   **Run**을 누른 뒤, 파일 맨 아래 주석에 있는 `insert into public.members …` 한 줄을 본인 이메일·이름으로 바꿔 한 번 더 실행합니다(첫 관리자 등록).
 3. **Authentication → Sign In / Providers → Email**에서 **Confirm email**을 끕니다.
    (Supabase 기본 메일 발송은 외부 주소로 잘 가지 않아서, 비밀번호 방식으로 바로 가입되게 합니다. 등록되지 않은 이메일은 DB에서 가입을 막습니다.)
-4. **Project Settings → API**에서 `Project URL`과 `anon public` 키를 복사해 `config.js`에 넣습니다.
+4. **Project Settings → API**에서 `Project URL`과 공개용 키(`sb_publishable_…` 또는 legacy `anon public`)를 복사해 `config.js`에 넣습니다.
    `service_role` 키는 절대 넣지 마세요.
 
 ### 2. Vercel (사이트 올리기)

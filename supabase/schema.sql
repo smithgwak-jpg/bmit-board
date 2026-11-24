@@ -179,7 +179,5 @@ begin
   end loop;
 end $$;
 
--- 첫 관리자: 아래 이메일과 이름을 본인 것으로 바꾸세요.
-insert into public.members (email, name, side, is_admin)
-values (lower('YOUR_EMAIL@example.com'), '관리자 이름', '우리', true)
-on conflict (email) do update set is_admin = true;
+-- 첫 관리자는 이 파일을 실행한 뒤 아래 한 줄을 따로 실행해서 등록합니다 (이메일과 이름만 바꾸기).
+-- insert into public.members (email, name, side, is_admin) values (lower('내이메일@example.com'), '이름', '우리', true);
