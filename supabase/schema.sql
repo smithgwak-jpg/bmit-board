@@ -1,5 +1,5 @@
 -- 비엠아이티 개발협의 현황: Supabase SQL Editor에 통째로 붙여넣고 Run 하세요.
--- 맨 아래 첫 관리자 이메일을 본인 이메일로 바꾼 뒤 실행해야 합니다.
+-- 실행 후 파일 맨 아래 주석의 insert 한 줄로 첫 관리자를 등록하세요.
 
 create extension if not exists pgcrypto;
 
