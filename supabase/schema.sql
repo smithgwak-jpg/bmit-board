@@ -105,6 +105,11 @@ create table if not exists public.votes (
   primary key (survey_id, email)
 );
 
+-- 사이트(로그인한 사용자)가 표에 접근할 수 있게 허용. 실제로 무엇을 볼지는 아래 RLS가 정함
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on public.members, public.requests, public.comments, public.survey, public.votes to authenticated;
+grant execute on function public.my_email(), public.is_member(), public.is_admin() to authenticated;
+
 -- 접근 권한 (RLS)
 alter table public.members  enable row level security;
 alter table public.requests enable row level security;
