@@ -135,6 +135,27 @@ h3.sec{font-size:13px;color:var(--muted);letter-spacing:.04em;padding-top:6px;bo
 .linkbtn{background:none;border:0;color:var(--accent);padding:0;font-weight:600}
 .side-badge{font-size:11px;font-weight:700;padding:1px 7px;border-radius:4px;background:var(--sunk);color:var(--muted)}
 .side-badge.bmit{background:var(--accent-soft);color:var(--accent)}
-.mem-form{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;grid-template-columns:1.4fr 1fr 120px auto auto;gap:8px;align-items:end}
+.mem-form{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;grid-template-columns:1.4fr 1fr 130px 1fr auto auto;gap:8px;align-items:end}
 @media (max-width:720px){.mem-form{grid-template-columns:1fr}}
 .check{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);padding-bottom:8px}
+
+/* 사진, 넓은 상세 화면 */
+aside.panel{width:min(760px,100%)}
+label.f textarea.big{min-height:260px;line-height:1.6}
+.photo-slots{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:560px){.photo-slots{grid-template-columns:1fr}}
+.slot{border:1px dashed var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.slot-head{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.picker{display:flex;flex-direction:column;gap:8px}
+.thumbs{display:flex;flex-wrap:wrap;gap:8px}
+.thumbs:empty{display:none}
+.thumb{position:relative;width:96px;height:96px;border-radius:6px;overflow:hidden;border:1px solid var(--line);background:var(--sunk)}
+.thumb a,.thumb img{display:block;width:100%;height:100%}
+.thumb img{object-fit:cover}
+.thumb.pending{outline:2px dashed var(--accent);outline-offset:-2px}
+.thumb .x{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:15px;line-height:22px;padding:0}
+.badge{font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:1px 6px;margin-left:6px;white-space:nowrap}
+.cm .thumbs{margin-top:6px}
+label.f textarea.links{min-height:64px;font-family:var(--f-mono);font-size:13px}
+.linklist{display:flex;flex-direction:column;gap:4px;font-size:13px;min-width:0}
+.linklist a{color:var(--accent);word-break:break-all}
