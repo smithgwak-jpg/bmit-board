@@ -37,6 +37,13 @@ function dday(due, status) {
   return d > 0 ? { t: 'D-' + d, over: false } : { t: (-d) + '일 지남', over: true };
 }
 function fmtTime(iso) { const d = new Date(iso); if (isNaN(d)) return ''; return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+let toastTimer = null;
+function toast(msg, bad) {
+  let t = $('toast');
+  if (!t) { t = h('div', { id: 'toast', role: 'status', 'aria-live': 'polite' }); document.body.append(t); }
+  t.textContent = msg; t.className = 'toast show' + (bad ? ' bad' : '');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.className = 'toast' + (bad ? ' bad' : ''); }, bad ? 6000 : 2500);
+}
 function note(msg) { const n = $('notice'); n.textContent = msg || ''; n.hidden = !msg; }
 function errMsg(e) { return (e && (e.message || e.error_description)) || '알 수 없는 오류'; }
 
@@ -119,7 +126,7 @@ function subscribe() {
 }
 async function run(promise, failMsg) {
   const { data, error } = await promise;
-  if (error) { note(failMsg + ': ' + errMsg(error)); throw error; }
+  if (error) { note(failMsg + ': ' + errMsg(error)); toast(failMsg + ': ' + errMsg(error), true); throw error; }
   scheduleReload();
   return data;
 }
@@ -330,7 +337,9 @@ async function saveReq(msg) {
   if (!data.title) return;
   const slots = photoSlots;
   const busy = slots.before.pick.files.length + slots.after.pick.files.length;
-  if (busy) msg.textContent = '사진 올리는 중…';
+  const btn = $('panel').querySelector('form button[type=submit]');
+  const wasNew = creating;
+  if (btn) { btn.disabled = true; btn.textContent = busy ? '사진 올리는 중…' : '저장 중…'; }
   try {
     let id = openId;
     if (creating) {
@@ -341,9 +350,9 @@ async function saveReq(msg) {
     for (const s of [slots.before, slots.after]) upd[s.key] = [...s.kept, ...await uploadImages(id, s.pick.files)];
     await run(sb.from('requests').update(Object.assign(data, upd)).eq('id', id), '저장하지 못했습니다');
     const i = reqs.findIndex(x => x.id === id); if (i >= 0) reqs[i] = Object.assign({}, reqs[i], data);
-    dirty = false; renderPanel();
-    const m = $('panel').querySelector('.saved'); if (m) m.textContent = '저장했습니다';
-  } catch (e) { msg.textContent = ''; }
+    dirty = false; closePanel(); render();
+    toast(wasNew ? '요청을 등록했습니다' : '저장했습니다');
+  } catch (e) { if (btn) { btn.disabled = false; btn.textContent = wasNew ? '요청 등록' : '변경 저장'; } }
 }
 async function addComment(rid, ta, pick, btn) {
   const body = ta.value.trim(); if (!body && !pick.files.length) return;
@@ -351,7 +360,7 @@ async function addComment(rid, ta, pick, btn) {
   try {
     const images = await uploadImages(rid, pick.files);
     await run(sb.from('comments').insert({ request_id: rid, body, images }), '기록을 남기지 못했습니다');
-    ta.value = ''; pick.clear();
+    ta.value = ''; pick.clear(); toast('기록을 남겼습니다');
   } catch (e) {} finally { if (btn) { btn.disabled = false; btn.textContent = '기록 남기기'; } }
 }
 
