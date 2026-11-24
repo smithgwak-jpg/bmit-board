@@ -205,9 +205,19 @@ function picker(label, markDirty) {
     }
   };
   const inp = h('input', { type: 'file', accept: 'image/*', multiple: true, hidden: true, onchange: e => { add([...e.target.files]); e.target.value = ''; } });
-  const el = h('div', { class: 'picker' }, h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn', onclick: () => inp.click() }, label), inp), list);
+  const el = h('div', { class: 'picker' }, h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn', onclick: () => inp.click() }, label), h('span', { class: 'cat' }, '또는 사진을 끌어다 놓기 · Ctrl+V'), inp), list);
   return { el, files, add, clear() { files.length = 0; list.replaceChildren(); } };
 }
+function dropzone(el, add) {
+  const hasFiles = e => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+  el.addEventListener('dragover', e => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; el.classList.add('drop'); });
+  el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) el.classList.remove('drop'); });
+  el.addEventListener('drop', e => { if (!hasFiles(e)) return; e.preventDefault(); e.stopPropagation(); el.classList.remove('drop'); add([...e.dataTransfer.files]); });
+  return el;
+}
+// 칸 밖에 떨어뜨려도 브라우저가 사진 파일을 열어 화면이 바뀌지 않게
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => e.preventDefault());
 const pastedImages = e => [...((e.clipboardData && e.clipboardData.files) || [])].filter(f => f.type.startsWith('image/'));
 function photoCount(r) {
   return (r.images_before || []).length + (r.images_after || []).length +
@@ -232,6 +242,7 @@ function renderPanel() {
       h('div', { class: 'slot-head' }, h('b', null, title), h('span', { class: 'cat' }, hint)),
       kept.length ? thumbs(kept, p => { kept.splice(kept.indexOf(p), 1); dirty = true; }) : null,
       pick.el);
+    dropzone(el, pick.add);
     return { key, kept, pick, el };
   };
   photoSlots = { before: slot('images_before', '변경 전', '지금 화면, 문제 상황'), after: slot('images_after', '변경 후', '원하는 모습, 완료 결과') };
@@ -248,7 +259,7 @@ function renderPanel() {
       h('div'),
       field('요청일', inp('p-reqat', r.requested_at, 'date')),
       field('기한', inp('p-due', r.due_at, 'date'))),
-    field('상세 내용', h('textarea', { id: 'p-desc', class: 'big', oninput: () => { dirty = true; }, onpaste: e => { const fs = pastedImages(e); if (fs.length) { e.preventDefault(); photoSlots.before.pick.add(fs); } }, placeholder: '배경, 원하는 결과, 참고 화면 등을 자세히 적어 주세요. 화면 캡처를 붙여넣으면(Ctrl+V) 변경 전 사진으로 올라갑니다.' }, r.description || '')),
+    field('상세 내용', dropzone(h('textarea', { id: 'p-desc', class: 'big', oninput: () => { dirty = true; }, onpaste: e => { const fs = pastedImages(e); if (fs.length) { e.preventDefault(); photoSlots.before.pick.add(fs); } }, placeholder: '배경, 원하는 결과, 참고 화면 등을 자세히 적어 주세요. 화면 캡처를 붙여넣거나(Ctrl+V) 사진을 끌어다 놓으면 변경 전 사진으로 올라갑니다.' }, r.description || ''), fs => photoSlots.before.pick.add(fs))),
     h('div', { class: 'photo-slots' }, photoSlots.before.el, photoSlots.after.el),
     field('참고 링크 (한 줄에 하나씩)', h('textarea', { id: 'p-links', class: 'links', oninput: () => { dirty = true; }, placeholder: 'https://… 참고 사이트, 기획 문서, 디자인 시안 주소' }, (r.links || []).join('\n'))),
     (r.links || []).length ? h('div', { class: 'linklist' }, r.links.map(u => /^https?:\/\//i.test(u) ? h('a', { href: u, target: '_blank', rel: 'noopener noreferrer' }, u) : h('span', null, u))) : null,
@@ -268,13 +279,13 @@ function renderPanel() {
       c.body ? h('div', { class: 'txt' }, c.body) : null,
       (c.images || []).length ? thumbs(c.images) : null));
     const cpick = picker('사진 첨부', false);
-    const ta = h('textarea', { id: 'cm-body', placeholder: '협의 내용, 질문, 답변을 남겨 주세요. 캡처는 붙여넣기(Ctrl+V)로도 첨부됩니다.', maxlength: 4000,
+    const ta = h('textarea', { id: 'cm-body', placeholder: '협의 내용, 질문, 답변을 남겨 주세요. 캡처 붙여넣기(Ctrl+V)나 사진 끌어다 놓기로도 첨부됩니다.', maxlength: 4000,
       onpaste: e => { const fs = pastedImages(e); if (fs.length) { e.preventDefault(); cpick.add(fs); } } });
-    body.append(h('form', { class: 'cm-form', onsubmit: e => { e.preventDefault(); addComment(r.id, ta, cpick, e.submitter); } },
+    body.append(dropzone(h('form', { class: 'cm-form', onsubmit: e => { e.preventDefault(); addComment(r.id, ta, cpick, e.submitter); } },
       field('기록 추가', ta), cpick.el,
       h('div', { class: 'row end' },
         h('span', { class: 'cat' }, orgLabel(me.side, me.team) + ' · ' + (me.name || email) + '(으)로 남겨집니다'),
-        h('button', { class: 'btn primary', type: 'submit' }, '기록 남기기'))));
+        h('button', { class: 'btn primary', type: 'submit' }, '기록 남기기'))), cpick.add));
   }
   $('panel').replaceChildren(
     h('div', { class: 'p-head' },
