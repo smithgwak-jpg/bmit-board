@@ -371,11 +371,12 @@ $('sv-form').addEventListener('submit', async e => {
 /* ---------- 참여자 (관리자) ---------- */
 function renderMembers() {
   const tb = $('mem-rows'); tb.replaceChildren();
-  for (const m of members) tb.append(h('tr', { style: 'cursor:default' },
+  members.forEach((m, i) => tb.append(h('tr', { style: 'cursor:default' },
+    h('td', { class: 'mono' }, i + 1),
     h('td', null, m.name || '—'), h('td', { class: 'mono', style: 'font-size:13px' }, m.email),
     h('td', null, h('span', { class: 'side-badge' + (m.side === 'BMIT' ? ' bmit' : '') }, orgLabel(m.side, m.team))),
     h('td', null, m.is_admin ? '관리자' : '참여자'),
-    h('td', null, m.email === email ? h('span', { class: 'cat' }, '나') : confirmBtn('내보내기', '한 번 더', () => run(sb.from('members').delete().eq('email', m.email), '내보내지 못했습니다'), 'padding:4px 10px;font-size:12px'))));
+    h('td', null, m.email === email ? h('span', { class: 'cat' }, '나') : confirmBtn('내보내기', '한 번 더', () => run(sb.from('members').delete().eq('email', m.email), '내보내지 못했습니다'), 'padding:4px 10px;font-size:12px')))));
 }
 $('mem-form').addEventListener('submit', async e => {
   e.preventDefault();
