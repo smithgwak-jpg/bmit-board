@@ -200,3 +200,6 @@ label.f textarea.links{min-height:64px;font-family:var(--f-mono);font-size:13px}
 .topbar .linkbtn{white-space:nowrap}
 td .btn{height:30px;padding:0 10px;font-size:12px}
 @media (max-width:520px){.brand{font-size:14px}.topbar .who{font-size:12px}.pagehead h1{font-size:21px}}
+.login-opts{display:flex;gap:18px;flex-wrap:wrap;margin-top:-4px}
+.login-opts .check{padding:0;color:var(--fg)}
+.login-opts input{width:16px;height:16px;accent-color:var(--accent);margin:0}

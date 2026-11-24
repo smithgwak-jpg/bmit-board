@@ -53,10 +53,26 @@ function setLoginMode(s) {
   $('l-err').textContent = '';
 }
 $('l-switch').onclick = () => setLoginMode(!signupMode);
+// 아이디 저장, 로그인 상태 유지 (비밀번호 자체는 저장하지 않고, 저장은 브라우저 비밀번호 관리자에 맡김)
+const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} } };
+const keepLogin = () => ls.get('bmit-keep') !== '0';
+const authStorage = {
+  getItem(k) { try { return localStorage.getItem(k) ?? sessionStorage.getItem(k); } catch (e) { return null; } },
+  setItem(k, v) { try { if (keepLogin()) { localStorage.setItem(k, v); sessionStorage.removeItem(k); } else { sessionStorage.setItem(k, v); localStorage.removeItem(k); } } catch (e) {} },
+  removeItem(k) { try { localStorage.removeItem(k); sessionStorage.removeItem(k); } catch (e) {} },
+};
+(() => {
+  const saved = ls.get('bmit-email');
+  $('l-save-id').checked = !!saved;
+  if (saved) $('l-email').value = saved;
+  $('l-keep').checked = keepLogin();
+})();
 $('login-form').addEventListener('submit', async e => {
   e.preventDefault();
   const em = $('l-email').value.trim().toLowerCase(), pw = $('l-pw').value;
   $('l-err').textContent = '';
+  ls.set('bmit-email', $('l-save-id').checked ? em : null);
+  ls.set('bmit-keep', $('l-keep').checked ? null : '0');
   $('l-submit').disabled = true;
   try {
     if (signupMode) {
@@ -444,7 +460,7 @@ async function enter(session) {
     $('l-submit').disabled = true;
     return;
   }
-  sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+  sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, { auth: { storage: authStorage, persistSession: true, autoRefreshToken: true } });
   let current = undefined;
   sb.auth.onAuthStateChange((_evt, session) => {
     const id = session ? session.user.id : null;

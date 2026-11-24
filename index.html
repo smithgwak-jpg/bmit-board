@@ -6,7 +6,7 @@
 <title>비엠아이티 개발협의 현황</title>
 <meta name="robots" content="noindex,nofollow">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 
@@ -19,6 +19,10 @@
     <label class="f">이메일<input id="l-email" type="email" autocomplete="email" required></label>
     <label class="f">비밀번호<input id="l-pw" type="password" autocomplete="current-password" minlength="8" required></label>
     <label class="f" id="l-pw2-wrap" hidden>비밀번호 확인<input id="l-pw2" type="password" autocomplete="new-password" minlength="8"></label>
+    <div class="login-opts">
+      <label class="check"><input type="checkbox" id="l-save-id"> 아이디 저장</label>
+      <label class="check"><input type="checkbox" id="l-keep" checked> 로그인 상태 유지</label>
+    </div>
     <div class="err" id="l-err" role="alert"></div>
     <button class="btn primary" type="submit" id="l-submit">로그인</button>
     <div class="hint" id="l-switch-wrap">처음 오셨나요? <button type="button" class="linkbtn" id="l-switch">비밀번호 만들기</button></div>
@@ -99,7 +103,7 @@
 <aside class="panel" id="panel" hidden aria-label="요청 상세"></aside>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
-<script src="config.js?v=5"></script>
-<script src="app.js?v=5"></script>
+<script src="config.js?v=6"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>
