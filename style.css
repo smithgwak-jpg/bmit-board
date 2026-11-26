@@ -269,3 +269,17 @@ h3.sec{border-top:2px solid #222}
 tbody tr.hid td{background:repeating-linear-gradient(-45deg,#fafafa 0 8px,#f3f3f3 8px 16px);color:#555}
 .hid-tag{display:inline-block;font-size:11px;font-weight:700;color:#8a5a00;border:1px solid #d9b46a;background:#fff8e6;padding:0 5px;margin-right:6px;vertical-align:1px}
 .hidden-note{background:#fff8e6;border:1px solid #d9b46a;color:#6b4700;padding:10px 12px;font-size:13px}
+/* 파일 첨부 */
+.files{display:flex;flex-direction:column;gap:6px}
+.files:empty{display:none}
+.file{display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--line-strong);background:#fff;color:var(--fg);text-decoration:none;font-size:13px;min-width:0}
+a.file:hover{border-color:var(--accent);background:var(--accent-soft)}
+.file.pending{border-style:dashed;border-color:var(--accent)}
+.file .fi{flex:none;font-size:10px;font-weight:700;color:#fff;background:var(--accent);padding:2px 5px;min-width:36px;text-align:center}
+.file .fn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file .fs{flex:none;font-size:12px;color:var(--muted)}
+.file-wrap{display:flex;gap:6px;align-items:stretch}
+.file-wrap .file{flex:1}
+.fx{flex:none;border:1px solid var(--line-strong);background:#fff;width:30px;font-size:15px;color:var(--muted);padding:0}
+.file .fx{border:0;width:22px;height:22px}
+.cm .files{margin-top:6px}

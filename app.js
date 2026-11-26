@@ -156,7 +156,7 @@ function renderRows() {
     const cc = comments.filter(c => c.request_id === r.id).length;
     tb.append(h('tr', { class: r.hidden ? 'hid' : null, tabindex: '0', onclick: () => openReq(r.id), onkeydown: e => { if (e.key === 'Enter') openReq(r.id); } },
       h('td', { class: 'mono' }, code(r.no)),
-      h('td', null, h('div', { class: 'ttl' }, r.hidden ? h('span', { class: 'hid-tag' }, '임시저장') : null, r.title, photoCount(r) ? h('span', { class: 'badge' }, '사진 ' + photoCount(r)) : null), r.category ? h('div', { class: 'cat' }, r.category) : null),
+      h('td', null, h('div', { class: 'ttl' }, r.hidden ? h('span', { class: 'hid-tag' }, '임시저장') : null, r.title, photoCount(r) ? h('span', { class: 'badge' }, '첨부 ' + photoCount(r)) : null), r.category ? h('div', { class: 'cat' }, r.category) : null),
       h('td', null, h('span', { class: 'pill st-' + r.status }, r.status)),
       h('td', null, h('span', { class: 'pr pr-' + r.priority }, r.priority)),
       h('td', null, r.requester || '—'),
@@ -213,23 +213,68 @@ async function uploadImages(rid, files) {
   }
   return out;
 }
-function picker(label, markDirty) {
+const FILE_EXT = /\.(pdf|xlsx?|xlsm|csv|docx?|pptx?|hwpx?|zip|txt)$/i;
+const isImg = f => /^image\/(png|jpeg|gif|webp)$/.test(f.type);
+const fmtSize = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1e3)) + 'KB';
+function picker(label, markDirty, any) {
   const files = [];
   const list = h('div', { class: 'thumbs' });
+  const flist = h('div', { class: 'files' });
   const add = fs => {
     for (const f of fs) {
-      if (!f.type || !f.type.startsWith('image/')) continue;
+      const img = isImg(f);
+      if (!img && !(any && FILE_EXT.test(f.name))) { if (any || !f.type.startsWith('image/')) toast((any ? '올릴 수 없는 형식입니다: ' : '사진만 올릴 수 있습니다: ') + f.name, true); continue; }
+      if (f.size > (img ? 40e6 : 20e6)) { toast('파일이 너무 커서 올릴 수 없습니다(20MB까지): ' + f.name, true); continue; }
       files.push(f);
-      const url = URL.createObjectURL(f);
-      const chip = h('div', { class: 'thumb pending' }, h('img', { src: url, alt: '올릴 사진' }),
-        h('button', { type: 'button', class: 'x', 'aria-label': '사진 빼기', onclick: () => { files.splice(files.indexOf(f), 1); chip.remove(); URL.revokeObjectURL(url); } }, '×'));
-      list.append(chip);
+      const drop = () => { files.splice(files.indexOf(f), 1); chip.remove(); };
+      let chip;
+      if (img) {
+        const url = URL.createObjectURL(f);
+        chip = h('div', { class: 'thumb pending' }, h('img', { src: url, alt: '올릴 사진' }),
+          h('button', { type: 'button', class: 'x', 'aria-label': '사진 빼기', onclick: () => { drop(); URL.revokeObjectURL(url); } }, '×'));
+        list.append(chip);
+      } else {
+        chip = h('div', { class: 'file pending' }, h('span', { class: 'fi' }, extOf(f.name)), h('span', { class: 'fn' }, f.name), h('span', { class: 'fs' }, fmtSize(f.size)),
+          h('button', { type: 'button', class: 'fx', 'aria-label': '파일 빼기', onclick: drop }, '×'));
+        flist.append(chip);
+      }
       if (markDirty) dirty = true;
     }
   };
-  const inp = h('input', { type: 'file', accept: 'image/*', multiple: true, hidden: true, onchange: e => { add([...e.target.files]); e.target.value = ''; } });
-  const el = h('div', { class: 'picker' }, h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn', onclick: () => inp.click() }, label), h('span', { class: 'cat' }, '또는 사진을 끌어다 놓기 · Ctrl+V'), inp), list);
-  return { el, files, add, clear() { files.length = 0; list.replaceChildren(); } };
+  const inp = h('input', { type: 'file', accept: any ? null : 'image/*', multiple: true, hidden: true, onchange: e => { add([...e.target.files]); e.target.value = ''; } });
+  const el = h('div', { class: 'picker' }, h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn', onclick: () => inp.click() }, label),
+    h('span', { class: 'cat' }, any ? '사진, 엑셀, PDF, 한글, 워드 등 · 끌어다 놓기 · Ctrl+V' : '또는 사진을 끌어다 놓기 · Ctrl+V'), inp), list, flist);
+  return { el, files, add, clear() { files.length = 0; list.replaceChildren(); flist.replaceChildren(); } };
+}
+const extOf = name => ((name.match(/\.(\w+)$/) || [])[1] || 'FILE').toUpperCase().slice(0, 4);
+const fileName = entry => { const i = entry.indexOf('|'); return i < 0 ? entry.split('/').pop() : entry.slice(i + 1); };
+const filePath = entry => entry.split('|')[0];
+function fileList(entries, onRemove) {
+  const box = h('div', { class: 'files' });
+  for (const e of entries) {
+    const name = fileName(e);
+    const a = h('a', { href: '#', class: 'file', title: name + ' 내려받기', onclick: async ev => {
+      ev.preventDefault();
+      const { data, error } = await sb.storage.from(BUCKET).createSignedUrl(filePath(e), 600, { download: name });
+      if (error) { toast('파일을 열지 못했습니다: ' + errMsg(error), true); return; }
+      location.href = data.signedUrl;
+    } }, h('span', { class: 'fi' }, extOf(name)), h('span', { class: 'fn' }, name), h('span', { class: 'fs' }, '내려받기'));
+    const wrap = onRemove ? h('div', { class: 'file-wrap' }, a, h('button', { type: 'button', class: 'fx', 'aria-label': '파일 빼기', onclick: () => { onRemove(e); wrap.remove(); } }, '×')) : a;
+    box.append(wrap);
+  }
+  return box;
+}
+async function uploadAll(rid, files) {
+  const imgs = files.filter(isImg), others = files.filter(f => !isImg(f));
+  const out = { images: await uploadImages(rid, imgs), files: [] };
+  for (const f of others) {
+    const ext = (f.name.match(/\.(\w+)$/) || [, 'bin'])[1].toLowerCase();
+    const path = rid + '/f-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+    const { error } = await sb.storage.from(BUCKET).upload(path, f, { contentType: f.type || 'application/octet-stream' });
+    if (error) { note('파일을 올리지 못했습니다: ' + errMsg(error)); toast('파일을 올리지 못했습니다: ' + f.name + ' (' + errMsg(error) + ')', true); throw error; }
+    out.files.push(path + '|' + f.name.replace(/\|/g, '_'));
+  }
+  return out;
 }
 function dropzone(el, add) {
   const hasFiles = e => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
@@ -243,12 +288,12 @@ window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('drop', e => e.preventDefault());
 const pastedImages = e => [...((e.clipboardData && e.clipboardData.files) || [])].filter(f => f.type.startsWith('image/'));
 function photoCount(r) {
-  return (r.images_before || []).length + (r.images_after || []).length +
-    comments.filter(c => c.request_id === r.id).reduce((n, c) => n + (c.images || []).length, 0);
+  return (r.images_before || []).length + (r.images_after || []).length + (r.files || []).length +
+    comments.filter(c => c.request_id === r.id).reduce((n, c) => n + (c.images || []).length + (c.files || []).length, 0);
 }
 
 /* ---------- 상세 패널 ---------- */
-let photoSlots = null;
+let photoSlots = null, attachSlot = null;
 const field = (label, el) => h('label', { class: 'f' }, label, el);
 const BMIT_STAFF = ['허미라 책임', '함만식 수석'];
 function asgSelect(val) {
@@ -277,6 +322,15 @@ function renderPanel() {
     dropzone(el, pick.add);
     return { key, kept, pick, el };
   };
+  const attach = (() => {
+    const kept = [...(r.files || [])];
+    const pick = picker('파일 첨부', true, true);
+    const el = h('div', { class: 'slot attach' }, h('div', { class: 'slot-head' }, h('b', null, '첨부 파일'), h('span', { class: 'cat' }, '기획서, 엑셀, PDF 등')),
+      kept.length ? fileList(kept, e => { kept.splice(kept.indexOf(e), 1); dirty = true; }) : null, pick.el);
+    dropzone(el, pick.add);
+    return { kept, pick, el };
+  })();
+  attachSlot = attach;
   photoSlots = { before: slot('images_before', '변경 전', '지금 화면, 문제 상황'), after: slot('images_after', '변경 후', '원하는 모습, 완료 결과') };
   const inp = (id, v, type = 'text', extra = {}) => h('input', Object.assign({ id, type, value: v || '', oninput: () => { dirty = true; } }, extra));
   const saveMsg = h('span', { class: 'saved' });
@@ -293,6 +347,7 @@ function renderPanel() {
       field('기한', inp('p-due', r.due_at, 'date'))),
     field('상세 내용', dropzone(h('textarea', { id: 'p-desc', class: 'big', oninput: () => { dirty = true; }, onpaste: e => { const fs = pastedImages(e); if (fs.length) { e.preventDefault(); photoSlots.before.pick.add(fs); } }, placeholder: '배경, 원하는 결과, 참고 화면 등을 자세히 적어 주세요. 화면 캡처를 붙여넣거나(Ctrl+V) 사진을 끌어다 놓으면 변경 전 사진으로 올라갑니다.' }, r.description || ''), fs => photoSlots.before.pick.add(fs))),
     h('div', { class: 'photo-slots' }, photoSlots.before.el, photoSlots.after.el),
+    attach.el,
     field('참고 링크 (한 줄에 하나씩)', h('textarea', { id: 'p-links', class: 'links', oninput: () => { dirty = true; }, placeholder: 'https://… 참고 사이트, 기획 문서, 디자인 시안 주소' }, (r.links || []).join('\n'))),
     (r.links || []).length ? h('div', { class: 'linklist' }, r.links.map(u => /^https?:\/\//i.test(u) ? h('a', { href: u, target: '_blank', rel: 'noopener noreferrer' }, u) : h('span', null, u))) : null,
     h('datalist', { id: 'cats' }, CATS.map(c => h('option', { value: c }))),
@@ -312,8 +367,9 @@ function renderPanel() {
       h('div', { class: 'meta' }, h('span', { class: 'side' }, orgLabel(c.side, c.author_team)), h('span', null, c.author_name || c.author_email), h('span', { class: 'mono' }, fmtTime(c.created_at)),
         c.author_email === email || isAdmin() ? cmDel(c) : null),
       c.body ? h('div', { class: 'txt' }, c.body) : null,
-      (c.images || []).length ? thumbs(c.images) : null));
-    const cpick = picker('사진 첨부', false);
+      (c.images || []).length ? thumbs(c.images) : null,
+      (c.files || []).length ? fileList(c.files) : null));
+    const cpick = picker('파일·사진 첨부', false, true);
     const ta = h('textarea', { id: 'cm-body', placeholder: '협의 내용, 질문, 답변을 남겨 주세요. 캡처 붙여넣기(Ctrl+V)나 사진 끌어다 놓기로도 첨부됩니다.', maxlength: 4000,
       onpaste: e => { const fs = pastedImages(e); if (fs.length) { e.preventDefault(); cpick.add(fs); } } });
     body.append(dropzone(h('form', { class: 'cm-form', onsubmit: e => { e.preventDefault(); addComment(r.id, ta, cpick, e.submitter); } },
@@ -350,7 +406,7 @@ async function saveReq(hide) {
     links: $('p-links').value.split('\n').map(x => x.trim()).filter(Boolean).map(x => /^[\w.-]+\.[a-z]{2,}/i.test(x) && !/^https?:/i.test(x) ? 'https://' + x : x).slice(0, 20) };
   if (!data.title) return;
   const slots = photoSlots;
-  const busy = slots.before.pick.files.length + slots.after.pick.files.length;
+  const busy = slots.before.pick.files.length + slots.after.pick.files.length + attachSlot.pick.files.length;
   const btn = $('panel').querySelector('form button[data-hide="' + (hide ? 1 : 0) + '"]');
   const label = btn ? btn.textContent : '';
   const wasNew = creating;
@@ -363,6 +419,9 @@ async function saveReq(hide) {
     }
     const upd = {};
     for (const s of [slots.before, slots.after]) upd[s.key] = [...s.kept, ...await uploadImages(id, s.pick.files)];
+    const att = await uploadAll(id, attachSlot.pick.files);
+    if (att.images.length) upd.images_before = [...upd.images_before, ...att.images];
+    upd.files = [...attachSlot.kept, ...att.files];
     await run(sb.from('requests').update(Object.assign(data, upd)).eq('id', id), '저장하지 못했습니다');
     const i = reqs.findIndex(x => x.id === id); if (i >= 0) reqs[i] = Object.assign({}, reqs[i], data);
     dirty = false; closePanel(); render();
@@ -373,9 +432,10 @@ async function addComment(rid, ta, pick, btn) {
   const body = ta.value.trim(); if (!body && !pick.files.length) return;
   if (btn) { btn.disabled = true; btn.textContent = '올리는 중…'; }
   try {
-    const images = await uploadImages(rid, pick.files);
-    await run(sb.from('comments').insert({ request_id: rid, body, images }), '기록을 남기지 못했습니다');
+    const up = await uploadAll(rid, pick.files);
+    await run(sb.from('comments').insert(Object.assign({ request_id: rid, body, images: up.images }, up.files.length ? { files: up.files } : {})), '기록을 남기지 못했습니다');
     ta.value = ''; pick.clear(); toast('기록을 남겼습니다');
+    if (document.activeElement) document.activeElement.blur();
   } catch (e) {} finally { if (btn) { btn.disabled = false; btn.textContent = '기록 남기기'; } }
 }
 
