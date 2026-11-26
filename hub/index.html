@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>업무 메인</title>
+<meta name="theme-color" content="#0f6b55">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/scan/style.css?v=3">
+</head>
+<body>
+<div class="wrap" id="app" hidden>
+  <header>
+    <div class="top">
+      <div>
+        <h1>업무 메인</h1>
+        <p id="sub">필요한 메뉴를 눌러 바로 이동하세요.</p>
+      </div>
+      <div class="who"><span id="who"></span><button class="ghost" id="logoutBtn">로그아웃</button></div>
+    </div>
+  </header>
+  <div class="status" id="homeStatus"></div>
+  <nav class="tiles" id="tiles" aria-label="메뉴"></nav>
+
+  <section class="card" id="admin" hidden>
+    <h2>관리 <span class="label">관리자만 보여요</span></h2>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" data-tab="members" aria-selected="true">사람</button>
+      <button type="button" role="tab" data-tab="groups" aria-selected="false">그룹</button>
+      <button type="button" role="tab" data-tab="links" aria-selected="false">메뉴 버튼</button>
+    </div>
+    <p class="hint" id="tabHint"></p>
+    <div class="btns" style="justify-content:flex-start"><button class="primary" id="addBtn">+ 추가</button></div>
+    <div id="formBox"></div>
+    <div class="status" id="admStatus" role="status"></div>
+    <div class="adm-list" id="admList"></div>
+  </section>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+<script src="/scan/config.js?v=2"></script>
+<script src="/scan/common.js?v=2"></script>
+<script src="hub.js?v=1"></script>
+</body>
+</html>

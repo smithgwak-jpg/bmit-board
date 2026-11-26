@@ -74,3 +74,22 @@ header .top{display:flex;justify-content:space-between;align-items:flex-start;ga
 .tile b{font-size:1rem}
 .tile span{color:var(--muted);font-size:.85rem}
 .tile.ext b::after{content:" ↗";color:var(--muted);font-weight:400}
+.back{color:var(--muted);text-decoration:none;font-size:.9rem}
+.back:hover{color:var(--accent)}
+.who{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.85rem}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button[aria-selected="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.adm-list{display:flex;flex-direction:column}
+.adm-row{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.adm-row:first-child{border-top:0}
+.adm-row .t{min-width:0;overflow-wrap:anywhere}
+.adm-row .t small{display:block;color:var(--muted)}
+.checks{display:flex;flex-wrap:wrap;gap:6px 14px}
+.checks label{display:flex;gap:6px;align-items:center;font-size:.9rem}
+.adm-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.adm-form .full{grid-column:1/-1}
+@media (max-width:560px){.adm-form{grid-template-columns:minmax(0,1fr)}}
+.adm-form input,.adm-form select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;min-width:0}
+.adm-form input[type="checkbox"],.checks input{width:auto;flex:none;accent-color:var(--accent)}
+.gate button{justify-content:center}
+#homeStatus:empty{display:none}

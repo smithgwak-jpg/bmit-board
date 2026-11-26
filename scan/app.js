@@ -86,7 +86,7 @@ $("analyzeBtn").onclick = async () => {
     openReview(data && typeof data === "object" ? data : {}, "새 상품");
     setStatus(st, "다 읽었어요. 아래에서 확인 후 저장하세요.");
   } catch (e) {
-    if (e.code === "bad_code") return showGate("접속 코드가 바뀌었어요. 다시 입력해 주세요.");
+    if (e.code === "login_required") return Gate.show("다시 로그인해 주세요.");
     const msg = e.code === "rate_limited" ? "잠시 사용량이 많아요. 조금 뒤 다시 시도해 주세요."
       : e.code === "invalid_json" ? "결과를 정리하지 못했어요. 사진을 더 선명하게 찍어 다시 시도해 주세요."
       : e.code === "server_not_ready" ? "서버 설정이 아직 끝나지 않았어요. 관리자에게 알려 주세요."
@@ -208,36 +208,27 @@ $("xlsxBtn").onclick = () => {
 };
 
 /* ---------- boot ---------- */
-function showGate(msg){
-  $("app").hidden = true; $("gate").hidden = false;
-  setStatus($("gateStatus"), msg || "", !!msg);
-  $("codeIn").focus();
-}
 async function loadList(){
   setStatus($("listStatus"), "");
   try { const { items: got } = await api("list", {}); items = got || []; renderList(); }
   catch (e) {
-    if (e.code === "bad_code") return showGate(accessCode ? "접속 코드가 맞지 않아요." : "");
+    if (e.code === "login_required") return Gate.show("다시 로그인해 주세요.");
     $("list").replaceChildren(); setStatus($("listStatus"), "목록을 불러오지 못했어요. " + (e.message || ""), true);
   }
 }
 async function start(){
   try {
-    const { needsCode, canScan } = await api("ping", {});
-    if (canScan === false) { location.href = "./"; return; }
-    $("logoutBtn").hidden = !needsCode;
-    $("gate").hidden = true; $("app").hidden = false;
+    const me = await api("me", {});
+    $("who").textContent = (me.name || me.email) + (me.group ? " · " + me.group : "");
+    if (!(me.links || []).some(l => l.id === "scan")) {
+      $("capture").hidden = true; $("listCard").hidden = true;
+      setStatus($("noAccess"), "스캐너 사용 권한이 없어요. 관리자에게 요청하세요.", true); return;
+    }
     renderThumbs(); loadList();
   } catch (e) {
-    if (e.code === "bad_code") return showGate(accessCode ? "접속 코드가 맞지 않아요." : "");
-    $("app").hidden = false; setStatus($("listStatus"), "서버에 연결하지 못했어요. 잠시 후 새로고침해 주세요.", true); $("list").replaceChildren();
+    if (e.code === "login_required") return Gate.show("다시 로그인해 주세요.");
+    setStatus($("noAccess"), "서버에 연결하지 못했어요. 잠시 후 새로고침해 주세요.", true);
   }
 }
-$("gateForm").addEventListener("submit", e => {
-  e.preventDefault();
-  accessCode = $("codeIn").value.trim();
-  try { localStorage.setItem(CODE_KEY, accessCode); } catch {}
-  start();
-});
-$("logoutBtn").onclick = () => { accessCode = ""; try { localStorage.removeItem(CODE_KEY); } catch {} showGate(); };
-start();
+$("logoutBtn").onclick = () => Gate.signOut();
+Gate.start(start);

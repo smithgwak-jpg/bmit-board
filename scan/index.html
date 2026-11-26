@@ -10,28 +10,18 @@
 <link rel="stylesheet" href="style.css?v=1">
 </head>
 <body>
-<div class="wrap" id="gate" hidden>
-  <section class="card gate">
-    <h2>상품 라벨 스캐너</h2>
-    <p class="hint">관리자에게 받은 접속 코드를 입력하세요.</p>
-    <form id="gateForm" style="display:flex;flex-direction:column;gap:10px">
-      <input id="codeIn" type="password" autocomplete="current-password" placeholder="접속 코드">
-      <button class="primary" type="submit">들어가기</button>
-    </form>
-    <div class="status" id="gateStatus" role="status"></div>
-  </section>
-</div>
-
 <div class="wrap" id="app" hidden>
   <header>
     <div class="top">
       <div>
+        <a href="/hub/" class="back">← 메인</a>
         <h1>상품 라벨 스캐너</h1>
         <p>상품 뒷면 표시사항을 찍으면 제품명, 제조사, 원재료 같은 정보를 읽어 목록으로 정리합니다.</p>
       </div>
-      <button class="ghost" id="logoutBtn" hidden>코드 다시 입력</button>
+      <div class="who"><span id="who"></span><button class="ghost" id="logoutBtn">로그아웃</button></div>
     </div>
   </header>
+  <div class="status" id="noAccess"></div>
 
   <section class="card" id="capture">
     <h2>1. 사진 찍기 <span class="label">뒷면 · 필요하면 앞면도</span></h2>
@@ -60,7 +50,7 @@
     </div>
   </section>
 
-  <section class="card">
+  <section class="card" id="listCard">
     <h2>3. 상품 목록 <span class="count" id="count">0개</span></h2>
     <div class="toolbar">
       <input id="search" type="search" placeholder="제품명, 제조사로 검색">
@@ -72,8 +62,9 @@
   </section>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="config.js?v=1"></script>
-<script src="common.js?v=1"></script>
-<script src="app.js?v=2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+<script src="/scan/config.js?v=2"></script>
+<script src="/scan/common.js?v=2"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>

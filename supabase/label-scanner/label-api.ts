@@ -1,6 +1,6 @@
 // 상품 라벨 스캐너 API
 // 브라우저는 이 함수만 부릅니다. Anthropic API 키와 DB 권한은 서버(이 함수)에만 있습니다.
-// 필요한 시크릿: ANTHROPIC_API_KEY. 접속 코드와 권한은 hub_roles 테이블, 메인 버튼은 hub_links 테이블.
+// 필요한 시크릿: ANTHROPIC_API_KEY. 사용자·권한은 hub_members / hub_groups, 메인 버튼은 hub_links 테이블.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const MODEL = Deno.env.get("LABEL_MODEL") || "claude-sonnet-5-5";
@@ -34,7 +34,7 @@ const PROMPT = `첨부한 사진은 한 상품의 포장 뒷면(또는 앞면) �
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-access-code, x-client-info",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const json = (body: unknown, status = 200) =>
@@ -95,15 +95,90 @@ async function scan(images: { media_type: string; data: string }[]) {
   }
 }
 
-// 권한: hub_roles 테이블에 코드가 하나도 없으면 누구나 전부 사용, 있으면 코드에 맞는 권한만.
-type Role = { name: string; all: boolean; ids: string[]; canScan: boolean; needsCode: boolean };
-async function resolveRole(code: string): Promise<Role | null> {
-  const { count } = await sb.from("hub_roles").select("code", { count: "exact", head: true });
-  if (!count) return { name: "", all: true, ids: [], canScan: true, needsCode: false };
-  if (!code) return null;
-  const { data } = await sb.from("hub_roles").select("*").eq("code", code).maybeSingle();
-  if (!data) return null;
-  return { name: data.name, all: !!data.all_links, ids: data.link_ids || [], canScan: !!data.can_scan, needsCode: true };
+// 로그인: Authorization 헤더의 Supabase 세션 토큰으로 사용자를 확인하고 hub_members에서 권한을 찾습니다.
+// 버튼 권한 = 그룹의 link_ids + 개인 extra_link_ids. 관리자는 전부. 스캐너는 'scan' 버튼 권한이 있어야 사용.
+type Me = { email: string; name: string; isAdmin: boolean; linkIds: string[]; all: boolean; group: string };
+async function resolveMe(req: Request): Promise<Me | null> {
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!token) return null;
+  const { data: u } = await sb.auth.getUser(token);
+  const email = (u?.user?.email || "").toLowerCase();
+  if (!email) return null;
+  const { data: m } = await sb.from("hub_members").select("*, hub_groups(name, link_ids)").eq("email", email).maybeSingle();
+  if (!m) return { email, name: "", isAdmin: false, linkIds: [], all: false, group: "" };
+  const g = (m.hub_groups || {}) as { name?: string; link_ids?: string[] };
+  const ids = [...new Set([...(g.link_ids || []), ...(m.extra_link_ids || [])])];
+  return { email, name: m.name, isAdmin: !!m.is_admin, linkIds: ids, all: !!m.is_admin, group: g.name || "" };
+}
+const canUse = (me: Me, id: string) => me.all || me.linkIds.includes(id);
+const ID_RE = /^[a-z0-9-]{1,40}$/;
+const URL_RE = /^(https:\/\/|\/(?!\/)|\.\.\/)/;
+const strArr = (v: unknown) => Array.isArray(v) ? v.map(String).filter((x) => ID_RE.test(x)).slice(0, 100) : [];
+
+async function admin(action: string, body: Record<string, unknown>, me: Me) {
+  if (action === "admin_load") {
+    const [g, m, l] = await Promise.all([
+      sb.from("hub_groups").select("*").order("name"),
+      sb.from("hub_members").select("*").order("name"),
+      sb.from("hub_links").select("*").order("sort"),
+    ]);
+    if (g.error || m.error || l.error) throw g.error || m.error || l.error;
+    return json({ groups: g.data, members: m.data, links: l.data });
+  }
+  if (action === "group_save") {
+    const name = String(body.name || "").trim().slice(0, 60);
+    if (!name) return json({ error: "bad_request", message: "그룹 이름을 입력하세요." }, 400);
+    const row = { name, link_ids: strArr(body.link_ids) };
+    const q = body.id ? sb.from("hub_groups").update(row).eq("id", String(body.id)) : sb.from("hub_groups").insert(row);
+    const { error } = await q;
+    if (error) return json({ error: "bad_request", message: error.code === "23505" ? "같은 이름의 그룹이 있어요." : "저장하지 못했어요." }, 400);
+    return json({ ok: true });
+  }
+  if (action === "group_delete") {
+    const { error } = await sb.from("hub_groups").delete().eq("id", String(body.id));
+    if (error) throw error;
+    return json({ ok: true });
+  }
+  if (action === "member_save") {
+    const email = String(body.email || "").trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ error: "bad_request", message: "이메일 형식이 맞지 않아요." }, 400);
+    if (email === me.email && !body.is_admin) return json({ error: "bad_request", message: "내 관리자 권한은 끌 수 없어요." }, 400);
+    const row = {
+      email, name: String(body.name || "").trim().slice(0, 60),
+      group_id: body.group_id ? String(body.group_id) : null,
+      extra_link_ids: strArr(body.extra_link_ids), is_admin: !!body.is_admin,
+    };
+    const { error } = await sb.from("hub_members").upsert(row);
+    if (error) throw error;
+    return json({ ok: true });
+  }
+  if (action === "member_delete") {
+    const email = String(body.email || "").toLowerCase();
+    if (email === me.email) return json({ error: "bad_request", message: "나 자신은 지울 수 없어요." }, 400);
+    const { error } = await sb.from("hub_members").delete().eq("email", email);
+    if (error) throw error;
+    return json({ ok: true });
+  }
+  if (action === "link_save") {
+    const id = String(body.id || "").trim().toLowerCase();
+    const url = String(body.url || "").trim();
+    const title = String(body.title || "").trim().slice(0, 60);
+    if (!ID_RE.test(id)) return json({ error: "bad_request", message: "버튼 ID는 영문 소문자, 숫자, - 만 쓸 수 있어요." }, 400);
+    if (!title) return json({ error: "bad_request", message: "버튼 이름을 입력하세요." }, 400);
+    if (!URL_RE.test(url)) return json({ error: "bad_request", message: "주소는 https:// 로 시작해야 해요." }, 400);
+    const row = { id, title, url: url.slice(0, 1000), icon: String(body.icon || "").slice(0, 8), descr: String(body.descr || "").slice(0, 120), sort: Number(body.sort) || 0 };
+    const { error } = await sb.from("hub_links").upsert(row);
+    if (error) throw error;
+    return json({ ok: true });
+  }
+  if (action === "link_delete") {
+    const id = String(body.id || "");
+    if (id === "scan") return json({ error: "bad_request", message: "스캐너 버튼은 지울 수 없어요. 권한에서 빼 주세요." }, 400);
+    const { error } = await sb.from("hub_links").delete().eq("id", id);
+    if (error) throw error;
+    return json({ ok: true });
+  }
+  return json({ error: "unknown_action" }, 400);
 }
 
 Deno.serve(async (req) => {
@@ -112,20 +187,22 @@ Deno.serve(async (req) => {
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return json({ error: "bad_request" }, 400); }
-  const action = body.action;
+  const action = String(body.action || "");
 
   try {
-    const role = await resolveRole(req.headers.get("x-access-code") || "");
-    if (!role) return json({ error: "bad_code", message: "접속 코드가 맞지 않아요." }, 401);
-    if (action === "ping") return json({ ok: true, needsCode: role.needsCode, role: role.name, canScan: role.canScan });
-    if (action === "home") {
+    const me = await resolveMe(req);
+    if (!me) return json({ error: "login_required", message: "로그인이 필요해요." }, 401);
+    if (action === "me") {
       const { data, error } = await sb.from("hub_links").select("id,icon,title,descr,url").order("sort");
       if (error) throw error;
-      const links = (data || []).filter((l) => role.all || role.ids.includes(l.id))
-        .filter((l) => l.id !== "scan" || role.canScan);
-      return json({ role: role.name, needsCode: role.needsCode, links });
+      const links = (data || []).filter((l) => canUse(me, l.id));
+      return json({ email: me.email, name: me.name, group: me.group, isAdmin: me.isAdmin, registered: !!(me.name || me.isAdmin || me.linkIds.length || me.group), links });
     }
-    if (!role.canScan) return json({ error: "forbidden", message: "이 코드로는 스캐너를 쓸 수 없어요." }, 403);
+    if (action.startsWith("admin_") || /^(group|member|link)_/.test(action)) {
+      if (!me.isAdmin) return json({ error: "forbidden", message: "관리자만 할 수 있어요." }, 403);
+      return await admin(action, body, me);
+    }
+    if (!canUse(me, "scan")) return json({ error: "forbidden", message: "스캐너 사용 권한이 없어요. 관리자에게 요청하세요." }, 403);
     if (action === "scan") return await scan(body.images as { media_type: string; data: string }[]);
     if (action === "list") {
       const { data, error } = await sb.from("label_products").select("*").order("created_at", { ascending: false }).limit(2000);
