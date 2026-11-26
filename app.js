@@ -250,12 +250,21 @@ function photoCount(r) {
 /* ---------- 상세 패널 ---------- */
 let photoSlots = null;
 const field = (label, el) => h('label', { class: 'f' }, label, el);
+const BMIT_STAFF = ['허미라 책임', '함만식 선임'];
+function asgSelect(val) {
+  const names = [...BMIT_STAFF];
+  for (const m of members) if (m.side === 'BMIT' && m.name && !names.some(n => n.startsWith(m.name))) names.push(m.name);
+  if (val && !names.includes(val)) names.push(val);
+  const s = h('select', { id: 'p-asg', onchange: () => { dirty = true; } }, h('option', { value: '' }, '미정'));
+  for (const n of names) s.append(h('option', { value: n, selected: n === val }, n));
+  return s;
+}
 function sel(id, opts, val) { const s = h('select', { id, onchange: () => { dirty = true; } }); for (const o of opts) s.append(h('option', { value: o, selected: o === val }, o)); return s; }
 function openReq(id) { openId = id; creating = false; dirty = false; renderPanel(); }
 function newReq() { openId = null; creating = true; dirty = false; renderPanel(); }
 function closePanel() { openId = null; creating = false; dirty = false; $('panel').hidden = true; $('scrim').hidden = true; }
 function renderPanel() {
-  const blank = { title: '', category: '', status: '요청', priority: '중', requester: myRequester(), assignee: '', requested_at: today(), due_at: '', description: '' };
+  const blank = { title: '', category: '', status: '요청', priority: '중', requester: myRequester(), assignee: '허미라 책임', requested_at: today(), due_at: '', description: '' };
   const r = creating ? blank : reqs.find(x => x.id === openId);
   if (!r) { closePanel(); return; }
   const slot = (key, title, hint) => {
@@ -278,7 +287,7 @@ function renderPanel() {
       field('우선순위', sel('p-prio', PRIOS, r.priority)),
       field('분류', inp('p-cat', r.category, 'text', { list: 'cats', placeholder: '기능 개선 / 오류 수정 / 신규 개발' })),
       field('요청자 (장학문구사)', inp('p-req', r.requester, 'text', { placeholder: '부서 또는 이름' })),
-      field('BMIT 담당', inp('p-asg', r.assignee, 'text', { placeholder: '담당자 이름' })),
+      field('BMIT 담당', asgSelect(r.assignee)),
       h('div'),
       field('요청일', inp('p-reqat', r.requested_at, 'date')),
       field('기한', inp('p-due', r.due_at, 'date'))),
