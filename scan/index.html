@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#0f6b55">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 <div class="wrap" id="app" hidden>
@@ -65,18 +65,22 @@
   </section>
 </div>
 <div class="cam" id="camModal" hidden>
-  <video id="camVideo" playsinline muted autoplay></video>
-  <div class="cam-flash" id="camFlash"></div>
+  <div class="cam-view">
+    <video id="camVideo" playsinline muted autoplay></video>
+    <div class="cam-ring" id="camRing"></div>
+    <div class="cam-hint">흐리면 글자 부분을 눌러 초점을 맞추세요. 너무 가까우면 조금 떨어져서 확대하세요.</div>
+  </div>
+  <div class="cam-zoom" id="camZoomBox" hidden><span>확대</span><input type="range" id="camZoom" aria-label="확대"></div>
   <div class="cam-bar">
-    <button type="button" class="cam-close" id="camClose">닫기</button>
+    <div class="cam-left"><button type="button" class="cam-btn" id="camClose">닫기</button><button type="button" class="cam-btn" id="camNative">기본 카메라</button></div>
     <button type="button" class="cam-shot" id="camShot" aria-label="찍기"></button>
-    <span class="cam-tip">라벨을 화면에 가득 차게</span>
+    <div class="cam-right"><button type="button" class="cam-btn" id="camSwitch" hidden>렌즈 바꾸기</button></div>
   </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
 <script src="/scan/config.js?v=2"></script>
 <script src="/scan/common.js?v=2"></script>
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

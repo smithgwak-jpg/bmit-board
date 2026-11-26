@@ -76,36 +76,92 @@ async function addAndRead(input){
 }
 $("camIn").onchange = e => addAndRead(e.target);
 
-/* ---------- 무음 촬영: 페이지 안에서 카메라 화면을 띄우고 한 장면을 잘라 씁니다 (셔터음 없음) ---------- */
-let camStream = null;
+/* ---------- 무음 촬영: 페이지 안에서 카메라 화면을 띄우고 찍습니다 (셔터음 없음) ---------- */
+let camStream = null, camTrack = null, camDevices = [], camIdx = 0;
+const CAM_KEY = "labelScannerCam";
+async function startStream(deviceId){
+  if (camStream) camStream.getTracks().forEach(t => t.stop());
+  const video = { width: { ideal: 1920 }, height: { ideal: 1440 } };
+  if (deviceId) video.deviceId = { exact: deviceId }; else video.facingMode = { ideal: "environment" };
+  camStream = await navigator.mediaDevices.getUserMedia({ audio: false, video });
+  camTrack = camStream.getVideoTracks()[0];
+  const v = $("camVideo"); v.srcObject = camStream; try { await v.play(); } catch {}
+  setupFocusZoom();
+}
+function caps(){ try { return camTrack && camTrack.getCapabilities ? camTrack.getCapabilities() : {}; } catch { return {}; } }
+async function applyAdv(c){ try { await camTrack.applyConstraints({ advanced: [c] }); return true; } catch { return false; } }
+async function setupFocusZoom(){
+  const c = caps();
+  if ((c.focusMode || []).includes("continuous")) await applyAdv({ focusMode: "continuous" });
+  const z = $("camZoom");
+  if (c.zoom && c.zoom.max > c.zoom.min) {
+    z.min = c.zoom.min; z.max = Math.min(c.zoom.max, c.zoom.min * 8); z.step = c.zoom.step || 0.1;
+    z.value = (camTrack.getSettings().zoom) || c.zoom.min; $("camZoomBox").hidden = false;
+  } else $("camZoomBox").hidden = true;
+  $("camSwitch").hidden = camDevices.length < 2;
+}
+$("camZoom").addEventListener("input", e => applyAdv({ zoom: Number(e.target.value) }));
+// 화면을 누르면 그 위치에 초점을 다시 맞춥니다.
+$("camVideo").addEventListener("click", async e => {
+  if (!camTrack) return;
+  const r = e.currentTarget.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+  const ring = $("camRing"); ring.style.left = (e.clientX - r.left) + "px"; ring.style.top = (e.clientY - r.top) + "px";
+  ring.classList.remove("on"); void ring.offsetWidth; ring.classList.add("on");
+  const c = caps(); const modes = c.focusMode || [];
+  const adv = {};
+  if (c.pointsOfInterest || "pointsOfInterest" in (camTrack.getSettings() || {})) adv.pointsOfInterest = [{ x, y }];
+  if (modes.includes("single-shot")) adv.focusMode = "single-shot";
+  if (Object.keys(adv).length) await applyAdv(adv);
+  if (modes.includes("continuous")) setTimeout(() => applyAdv({ focusMode: "continuous" }), 1500);
+});
 async function openCam(){
   if (!navigator.mediaDevices?.getUserMedia) return $("camIn").click();
   try {
-    camStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 2560 }, height: { ideal: 1920 } } });
+    let saved = ""; try { saved = localStorage.getItem(CAM_KEY) || ""; } catch {}
+    try { await startStream(saved || undefined); } catch { await startStream(); }
+    // 권한을 받은 뒤에야 카메라 이름이 보입니다. 후면 카메라만 골라 둡니다.
+    const all = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "videoinput");
+    const back = all.filter(d => /back|rear|environment|후면/i.test(d.label));
+    camDevices = back.length ? back : all;
+    const cur = camTrack.getSettings().deviceId;
+    camIdx = Math.max(0, camDevices.findIndex(d => d.deviceId === cur));
+    setupFocusZoom();
   } catch (e) {
     setStatus($("status"), "카메라를 열 수 없어서 기본 카메라로 찍어요. (브라우저에서 카메라 권한을 허용하면 무음으로 찍을 수 있어요)");
     return $("camIn").click();
   }
-  const v = $("camVideo"); v.srcObject = camStream; $("camModal").hidden = false; document.body.style.overflow = "hidden";
-  try { await v.play(); } catch {}
+  $("camModal").hidden = false; document.body.style.overflow = "hidden";
 }
+$("camSwitch").onclick = async () => {
+  if (camDevices.length < 2) return;
+  camIdx = (camIdx + 1) % camDevices.length;
+  const id = camDevices[camIdx].deviceId;
+  try { await startStream(id); try { localStorage.setItem(CAM_KEY, id); } catch {} } catch {}
+};
 function closeCam(){
-  if (camStream) camStream.getTracks().forEach(t => t.stop()); camStream = null;
+  if (camStream) camStream.getTracks().forEach(t => t.stop()); camStream = null; camTrack = null;
   $("camVideo").srcObject = null; $("camModal").hidden = true; document.body.style.overflow = "";
 }
 async function snap(){
   const v = $("camVideo"); if (!v.videoWidth) return;
-  const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight;
-  c.getContext("2d").drawImage(v, 0, 0);
-  const blob = await new Promise(r => c.toBlob(r, "image/jpeg", .92));
-  $("camFlash").classList.remove("on"); void $("camFlash").offsetWidth; $("camFlash").classList.add("on");
+  $("camShot").disabled = true;
+  let blob = null;
+  // 카메라 사진 모드(takePhoto)는 기기에 따라 셔터음이 나서, 화면을 그대로 잘라 씁니다.
+  {
+    const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight;
+    c.getContext("2d").drawImage(v, 0, 0);
+    blob = await new Promise(r => c.toBlob(r, "image/jpeg", .92));
+  }
+  $("camShot").disabled = false;
   closeCam();
-  await addFiles([new File([blob], "camera.jpg", { type: "image/jpeg" })]);
+  await addFiles([new File([blob], "camera.jpg", { type: blob.type || "image/jpeg" })]);
   if (photos.length && !$("analyzeBtn").disabled) $("analyzeBtn").click();
 }
 $("camBtn").onclick = openCam;
 $("camShot").onclick = snap;
 $("camClose").onclick = closeCam;
+$("camNative").onclick = () => { closeCam(); $("camIn").click(); };
 document.addEventListener("visibilitychange", () => { if (document.hidden && camStream) closeCam(); });
 $("fileIn").onchange = e => addAndRead(e.target);
 const drop = $("drop");
