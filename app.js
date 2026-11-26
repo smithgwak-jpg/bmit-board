@@ -141,29 +141,28 @@ function renderStrip() {
       h('span', { class: 'num' }, n)));
   }
 }
+let rowClickT = null;
 function renderRows() {
   const tb = $('rows'); tb.replaceChildren();
   const ql = query.trim().toLowerCase();
   const list = reqs.filter(r => (filter === '전체' || r.status === filter) &&
     (!ql || [r.title, r.category, r.requester, r.assignee, code(r.no)].join(' ').toLowerCase().includes(ql)));
   if (!list.length) {
-    tb.append(h('tr', null, h('td', { colspan: 9, class: 'empty' },
+    tb.append(h('tr', null, h('td', { colspan: 7, class: 'empty' },
       !loaded ? '불러오는 중입니다…' : reqs.length ? '조건에 맞는 요청이 없습니다.' : '아직 등록된 요청이 없습니다. "새 요청 등록"으로 첫 건을 올려 주세요.')));
     return;
   }
   for (const r of list) {
     const dd = dday(r.due_at, r.status);
     const cc = comments.filter(c => c.request_id === r.id).length;
-    tb.append(h('tr', { class: [r.hidden ? 'hid' : '', r.id === paneRid && wide() ? 'talking' : ''].join(' ').trim() || null, tabindex: '0', onclick: () => openReq(r.id), onkeydown: e => { if (e.key === 'Enter') openReq(r.id); } },
+    tb.append(h('tr', { class: [r.hidden ? 'hid' : '', (paneRids || []).includes(r.id) && wide() ? 'talking' : ''].join(' ').trim() || null, tabindex: '0', title: '클릭: 상세 · 더블클릭: 대화창', onclick: e => { if (e.detail > 1) return; clearTimeout(rowClickT); rowClickT = setTimeout(() => openReq(r.id), 240); }, ondblclick: e => { clearTimeout(rowClickT); getSelection().removeAllRanges(); talkTo(r.id); }, onkeydown: e => { if (e.key === 'Enter') openReq(r.id); } },
       h('td', { class: 'mono' }, code(r.no)),
-      h('td', null, h('div', { class: 'ttl' }, r.hidden ? h('span', { class: 'hid-tag' }, '임시저장') : null, r.title, photoCount(r) ? attachBadge(r) : null), r.category ? h('div', { class: 'cat' }, r.category) : null),
+      h('td', null, h('div', { class: 'ttl' }, r.hidden ? h('span', { class: 'hid-tag' }, '임시저장') : null, r.title, unreadCount(r.id) ? h('span', { class: 'unread', title: '새 메시지 · 더블클릭하면 대화창' }, unreadCount(r.id)) : null, photoCount(r) ? attachBadge(r) : null), r.category ? h('div', { class: 'cat' }, r.category) : null),
       h('td', null, h('span', { class: 'pill st-' + r.status }, r.status)),
       h('td', null, h('span', { class: 'pr pr-' + r.priority }, r.priority)),
       h('td', null, r.requester || '—'),
-      h('td', null, r.assignee || h('span', { style: 'color:var(--muted)' }, '미지정')),
       h('td', { class: 'mono' }, r.requested_at || '—'),
-      h('td', { class: 'due mono' + (dd && dd.over ? ' over' : '') }, r.due_at || '—', dd ? h('small', null, dd.t) : null),
-      h('td', { class: 'chat-cell', title: '장학톡 열기', onclick: e => { e.stopPropagation(); talkTo(r.id); } }, cc ? h('span', { class: 'chat-n' }, '💬 ' + cc) : '—', unreadCount(r.id) ? h('span', { class: 'unread', title: '새 메시지' }, unreadCount(r.id)) : null)));
+      h('td', { class: 'due mono' + (dd && dd.over ? ' over' : '') }, r.due_at || '—', dd ? h('small', null, dd.t) : null)));
   }
 }
 
@@ -469,33 +468,38 @@ function buildChat(rid) {
 }
 function updateChats() { for (const c of [...chats]) c.update(); }
 
-/* 목록 오른쪽 장학톡 */
-let paneRid = null, paneChat = null;
+/* 목록 오른쪽 장학톡: 대화창 최대 3개 */
+const MAX_TALKS = 3;
+let paneRids = null, paneWins = [];
 const wide = () => window.matchMedia('(min-width:1180px)').matches;
 function lastTalk(rid) { return comments.filter(c => c.request_id === rid).map(c => c.created_at).sort().pop() || ''; }
 function renderPane(force) {
   const pane = $('talk-pane'); if (!pane) return;
-  if (!reqs.length) { pane.replaceChildren(h('div', { class: 'chat-head' }, h('b', null, '💬 장학톡')), h('div', { class: 'chat-empty pane-empty' }, '요청을 등록하면 건마다 대화할 수 있습니다.')); paneChat = null; return; }
-  if (!paneRid || !reqs.some(r => r.id === paneRid)) paneRid = [...reqs].sort((a, b) => lastTalk(b.id).localeCompare(lastTalk(a.id)) || (b.no - a.no))[0].id;
-  const r = reqs.find(x => x.id === paneRid);
-  if (!force && paneChat && paneChat.rid === paneRid && paneChat.log.isConnected) { paneChat.update(); syncPaneSel(); return; }
-  paneChat = buildChat(paneRid);
-  const sel = h('select', { class: 'pane-sel', 'aria-label': '대화할 요청 고르기', onchange: e => { paneRid = e.target.value; renderPane(true); renderRows(); } });
-  for (const x of reqs) { const u = unreadCount(x.id); sel.append(h('option', { value: x.id, selected: x.id === paneRid }, code(x.no) + ' ' + x.title + (u ? '  (새 메시지 ' + u + ')' : ''))); }
+  if (paneRids === null && loaded && reqs.length) paneRids = [[...reqs].sort((a, b) => lastTalk(b.id).localeCompare(lastTalk(a.id)) || (b.no - a.no))[0].id];
+  paneRids = (paneRids || []).filter(id => reqs.some(r => r.id === id));
+  const same = paneWins.length === paneRids.length && paneWins.every((w, i) => w.rid === paneRids[i] && w.chat.log.isConnected);
+  if (!force && same) { paneWins.forEach(w => { w.chat.update(); const r = reqs.find(x => x.id === w.rid); if (r) w.title.textContent = code(r.no) + ' ' + r.title; }); return; }
+  paneWins = paneRids.map(rid => {
+    const r = reqs.find(x => x.id === rid);
+    const chat = buildChat(rid);
+    const title = h('button', { type: 'button', class: 'win-title', title: '상세 보기', onclick: () => openReq(rid) }, code(r.no) + ' ' + r.title);
+    const el = h('div', { class: 'talk-win' + (r.hidden ? ' hid' : '') },
+      h('div', { class: 'win-head' }, title, h('button', { type: 'button', class: 'win-x', title: '대화창 닫기', 'aria-label': '대화창 닫기', onclick: () => { paneRids = paneRids.filter(x => x !== rid); renderPane(true); renderRows(); } }, '×')),
+      chat.log, chat.form);
+    return { rid, chat, el, title };
+  });
   pane.replaceChildren(
-    h('div', { class: 'chat-head pane-head' },
-      h('div', { class: 'row', style: 'justify-content:space-between;width:100%' }, h('b', null, '💬 장학톡'), h('button', { class: 'btn', type: 'button', onclick: () => openReq(paneRid) }, '상세 보기')),
-      sel),
-    paneChat.log, paneChat.form);
-  paneChat.update(true);
-}
-function syncPaneSel() {
-  const sel = document.querySelector('#talk-pane .pane-sel'); if (!sel) return;
-  for (const o of sel.options) { const x = reqs.find(r => r.id === o.value); if (x) { const u = x.id === paneRid ? 0 : unreadCount(x.id); o.textContent = code(x.no) + ' ' + x.title + (u ? '  (새 메시지 ' + u + ')' : ''); } }
+    h('div', { class: 'pane-top' }, h('b', null, '💬 장학톡'), h('span', { class: 'cat' }, '목록을 더블클릭하면 대화창이 열려요 (최대 ' + MAX_TALKS + '개)')),
+    ...(paneWins.length ? paneWins.map(w => w.el) : [h('div', { class: 'chat-empty pane-empty' }, reqs.length ? '목록에서 요청을 더블클릭하면 여기에 대화창이 열립니다.' : '요청을 등록하면 건마다 대화할 수 있습니다.')]));
+  pane.dataset.n = paneWins.length;
+  paneWins.forEach(w => w.chat.update(true));
 }
 function talkTo(rid) {
-  if (wide()) { paneRid = rid; renderPane(true); renderRows(); paneChat && paneChat.ta.focus(); }
-  else { openReq(rid); setTimeout(() => { const l = document.querySelector('#panel .chat-col'); if (l) { l.scrollIntoView({ block: 'start' }); l.querySelector('textarea').focus(); } }, 50); }
+  if (wide()) {
+    paneRids = [rid, ...(paneRids || []).filter(x => x !== rid)].slice(0, MAX_TALKS);
+    renderPane(true); renderRows();
+    const w = paneWins.find(x => x.rid === rid); if (w) w.chat.ta.focus();
+  } else { openReq(rid); setTimeout(() => { const l = document.querySelector('#panel .chat-col'); if (l) { l.scrollIntoView({ block: 'start' }); l.querySelector('textarea').focus(); } }, 50); }
 }
 function nameOf(em) { const m = members.find(x => x.email === em); return m ? m.name || em : em; }
 function confirmBtn(label, armedLabel, action, style) {
