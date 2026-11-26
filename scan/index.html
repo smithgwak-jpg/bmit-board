@@ -27,9 +27,10 @@
     <h2>1. 사진 찍기 <span class="label">뒷면 · 필요하면 앞면도</span></h2>
     <div class="drop" id="drop">
       <div class="btns">
-        <button type="button" class="primary" id="camBtn">📷 카메라로 찍기</button>
+        <button type="button" class="primary" id="camNativeBtn">📷 카메라로 찍기</button>
         <input id="camIn" type="file" accept="image/*" capture="environment" hidden>
         <label class="btn">사진 선택<input id="fileIn" type="file" accept="image/*" multiple></label>
+        <button type="button" id="camBtn">무음 촬영</button>
       </div>
       <p class="hint">찍으면 바로 정보를 읽어요. 글자가 잘 보이게 가까이, 빛 반사 없이 찍어 주세요. 앞면 등 사진을 더 찍으면 합쳐서 다시 읽어요(최대 4장). PC에서는 이미지를 여기로 끌어다 놓아도 됩니다.</p>
       <div class="thumbs" id="thumbs"></div>
@@ -81,6 +82,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
 <script src="/scan/config.js?v=2"></script>
 <script src="/scan/common.js?v=2"></script>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>

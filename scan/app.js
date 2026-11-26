@@ -159,6 +159,7 @@ async function snap(){
   if (photos.length && !$("analyzeBtn").disabled) $("analyzeBtn").click();
 }
 $("camBtn").onclick = openCam;
+$("camNativeBtn").onclick = () => $("camIn").click();
 $("camShot").onclick = snap;
 $("camClose").onclick = closeCam;
 $("camNative").onclick = () => { closeCam(); $("camIn").click(); };
