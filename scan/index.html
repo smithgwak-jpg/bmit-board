@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>상품 라벨 스캐너</title>
+<meta name="theme-color" content="#0f6b55">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+<div class="wrap" id="gate" hidden>
+  <section class="card gate">
+    <h2>상품 라벨 스캐너</h2>
+    <p class="hint">관리자에게 받은 접속 코드를 입력하세요.</p>
+    <form id="gateForm" style="display:flex;flex-direction:column;gap:10px">
+      <input id="codeIn" type="password" autocomplete="current-password" placeholder="접속 코드">
+      <button class="primary" type="submit">들어가기</button>
+    </form>
+    <div class="status" id="gateStatus" role="status"></div>
+  </section>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header>
+    <div class="top">
+      <div>
+        <h1>상품 라벨 스캐너</h1>
+        <p>상품 뒷면 표시사항을 찍으면 제품명, 제조사, 원재료 같은 정보를 읽어 목록으로 정리합니다.</p>
+      </div>
+      <button class="ghost" id="logoutBtn" hidden>코드 다시 입력</button>
+    </div>
+  </header>
+
+  <section class="card" id="capture">
+    <h2>1. 사진 찍기 <span class="label">뒷면 · 필요하면 앞면도</span></h2>
+    <div class="drop" id="drop">
+      <div class="btns">
+        <label class="btn primary">📷 카메라로 찍기<input id="camIn" type="file" accept="image/*" capture="environment"></label>
+        <label class="btn">사진 선택<input id="fileIn" type="file" accept="image/*" multiple></label>
+      </div>
+      <p class="hint">글자가 잘 보이게 가까이, 빛 반사 없이 찍어 주세요. 한 상품에 사진 여러 장(최대 4장)을 함께 넣을 수 있어요. PC에서는 이미지를 여기로 끌어다 놓아도 됩니다.</p>
+      <div class="thumbs" id="thumbs"></div>
+    </div>
+    <div class="btns">
+      <button class="primary" id="analyzeBtn" disabled>정보 읽기</button>
+      <button id="manualBtn">직접 입력</button>
+    </div>
+    <div class="status" id="status" role="status"></div>
+  </section>
+
+  <section class="card" id="review" hidden>
+    <h2>2. 확인하고 저장 <span class="label" id="reviewTag">읽은 내용</span></h2>
+    <p class="hint">읽은 내용이 틀렸으면 고쳐서 저장하세요. 점선 칸은 사진에서 찾지 못한 항목입니다.</p>
+    <form class="form" id="form"></form>
+    <div class="btns">
+      <button class="primary" id="saveBtn">목록에 저장</button>
+      <button id="cancelBtn">취소</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>3. 상품 목록 <span class="count" id="count">0개</span></h2>
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="제품명, 제조사로 검색">
+      <button id="xlsxBtn">엑셀(.xlsx) 받기</button>
+      <button id="csvBtn">CSV 받기</button>
+    </div>
+    <div class="status" id="listStatus"></div>
+    <div class="list" id="list"><div class="empty-state">목록을 불러오는 중…</div></div>
+  </section>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="config.js?v=1"></script>
+<script src="common.js?v=1"></script>
+<script src="app.js?v=2"></script>
+</body>
+</html>
