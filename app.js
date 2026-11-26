@@ -180,13 +180,30 @@ function thumbs(paths, onRemove) {
   const box = h('div', { class: 'thumbs' });
   const items = paths.map(p => {
     const img = h('img', { alt: '첨부 사진', loading: 'lazy' });
-    const a = h('a', { href: '#', target: '_blank', rel: 'noopener', class: 'thumb-link', title: '크게 보기' }, img);
+    const a = h('a', { href: '#', class: 'thumb-link', title: '크게 보기', onclick: ev => { ev.preventDefault(); lightbox(paths, paths.indexOf(p)); } }, img);
     const wrap = h('div', { class: 'thumb' }, a, onRemove ? h('button', { type: 'button', class: 'x', 'aria-label': '사진 빼기', onclick: () => { onRemove(p); wrap.remove(); } }, '×') : null);
     box.append(wrap);
     return () => { if (urlCache[p]) { img.src = urlCache[p]; a.href = urlCache[p]; } };
   });
   signUrls(paths).then(() => items.forEach(f => f())).catch(() => {});
   return box;
+}
+function lightbox(paths, start) {
+  let i = start;
+  const img = h('img', { alt: '첨부 사진' });
+  const count = h('span', { class: 'lb-count' });
+  const show = () => { img.src = urlCache[paths[i]] || ''; count.textContent = paths.length > 1 ? (i + 1) + ' / ' + paths.length : ''; open.href = urlCache[paths[i]] || '#'; };
+  const move = d => { i = (i + d + paths.length) % paths.length; show(); };
+  const close = () => { box.remove(); document.removeEventListener('keydown', key, true); };
+  const key = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } else if (e.key === 'ArrowRight') move(1); else if (e.key === 'ArrowLeft') move(-1); };
+  const open = h('a', { class: 'lb-btn', target: '_blank', rel: 'noopener', title: '새 창에서 원본 보기' }, '원본');
+  const box = h('div', { class: 'lightbox', onclick: e => { if (e.target === box || e.target === stage) close(); } },
+    h('div', { class: 'lb-bar' }, count, h('span', { style: 'flex:1' }), open, h('button', { type: 'button', class: 'lb-btn', onclick: close }, '닫기 ✕')));
+  const stage = h('div', { class: 'lb-stage' }, img);
+  box.append(stage);
+  if (paths.length > 1) box.append(h('button', { type: 'button', class: 'lb-nav prev', 'aria-label': '이전 사진', onclick: () => move(-1) }, '‹'), h('button', { type: 'button', class: 'lb-nav next', 'aria-label': '다음 사진', onclick: () => move(1) }, '›'));
+  document.body.append(box); document.addEventListener('keydown', key, true);
+  signUrls(paths).then(show).catch(() => {}); show();
 }
 async function shrink(file) {
   if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 1.5e6) return file;
