@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#0f6b55">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="style.css?v=1">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 <div class="wrap" id="app" hidden>
@@ -27,7 +27,8 @@
     <h2>1. 사진 찍기 <span class="label">뒷면 · 필요하면 앞면도</span></h2>
     <div class="drop" id="drop">
       <div class="btns">
-        <label class="btn primary">📷 카메라로 찍기<input id="camIn" type="file" accept="image/*" capture="environment"></label>
+        <button type="button" class="primary" id="camBtn">📷 카메라로 찍기</button>
+        <input id="camIn" type="file" accept="image/*" capture="environment" hidden>
         <label class="btn">사진 선택<input id="fileIn" type="file" accept="image/*" multiple></label>
       </div>
       <p class="hint">찍으면 바로 정보를 읽어요. 글자가 잘 보이게 가까이, 빛 반사 없이 찍어 주세요. 앞면 등 사진을 더 찍으면 합쳐서 다시 읽어요(최대 4장). PC에서는 이미지를 여기로 끌어다 놓아도 됩니다.</p>
@@ -44,8 +45,10 @@
     <h2>2. 확인하고 저장 <span class="label" id="reviewTag">읽은 내용</span></h2>
     <p class="hint">읽은 내용이 틀렸으면 고쳐서 저장하세요. 점선 칸은 사진에서 찾지 못한 항목입니다.</p>
     <form class="form" id="form"></form>
+    <div class="status" id="extraStatus" role="status"></div>
     <div class="btns">
       <button class="primary" id="saveBtn">목록에 저장</button>
+      <button id="extraBtn">제조사·최저가 다시 찾기</button>
       <button id="cancelBtn">취소</button>
     </div>
   </section>
@@ -61,10 +64,19 @@
     <div class="list" id="list"><div class="empty-state">목록을 불러오는 중…</div></div>
   </section>
 </div>
+<div class="cam" id="camModal" hidden>
+  <video id="camVideo" playsinline muted autoplay></video>
+  <div class="cam-flash" id="camFlash"></div>
+  <div class="cam-bar">
+    <button type="button" class="cam-close" id="camClose">닫기</button>
+    <button type="button" class="cam-shot" id="camShot" aria-label="찍기"></button>
+    <span class="cam-tip">라벨을 화면에 가득 차게</span>
+  </div>
+</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
 <script src="/scan/config.js?v=2"></script>
 <script src="/scan/common.js?v=2"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

@@ -29,3 +29,14 @@ alter table public.label_products enable row level security;
 -- 정책 없음: anon/authenticated는 읽기·쓰기 불가, service role(Edge Function)만 접근
 revoke all on public.label_products from anon, authenticated;
 create index if not exists label_products_created_at on public.label_products (created_at desc);
+
+-- 2026-11-27: 브랜드 칸은 화면에서 뺌(brand 열은 남아 있음). 제조사 정보·온라인 최저가 열 추가
+alter table public.label_products
+  add column if not exists mfr_revenue text not null default '', add column if not exists mfr_founded text not null default '',
+  add column if not exists mfr_employees text not null default '', add column if not exists mfr_source text not null default '',
+  add column if not exists low_price text not null default '', add column if not exists low_price_store text not null default '',
+  add column if not exists low_price_url text not null default '', add column if not exists low_price_at text not null default '';
+create table if not exists public.label_companies (key text primary key, name text not null, revenue text not null default '',
+  founded text not null default '', employees text not null default '', source text not null default '', updated_at timestamptz not null default now());
+alter table public.label_companies enable row level security;
+revoke all on public.label_companies from anon, authenticated;

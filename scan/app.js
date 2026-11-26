@@ -1,6 +1,5 @@
 const FIELDS = [
   ["productName","제품명",""],
-  ["brand","브랜드",""],
   ["category","식품유형 / 품목",""],
   ["netContent","내용량",""],
   ["manufacturer","제조사 (제조원)",""],
@@ -19,6 +18,14 @@ const FIELDS = [
   ["certifications","인증 (HACCP 등)",""],
   ["reportNo","품목보고번호",""],
   ["notes","기타 / 주의사항","full area"],
+  ["mfrRevenue","제조사 매출",""],
+  ["mfrFounded","제조사 설립일",""],
+  ["mfrEmployees","제조사 직원수",""],
+  ["mfrSource","제조사 정보 출처","full"],
+  ["lowPrice","온라인 최저가",""],
+  ["lowPriceStore","최저가 판매처",""],
+  ["lowPriceUrl","최저가 링크","full"],
+  ["lowPriceAt","최저가 확인일",""],
 ];
 const $ = id => document.getElementById(id);
 let photos = [];          // {blob, url}
@@ -68,6 +75,38 @@ async function addAndRead(input){
   if (photos.length && !$("analyzeBtn").disabled) $("analyzeBtn").click();
 }
 $("camIn").onchange = e => addAndRead(e.target);
+
+/* ---------- 무음 촬영: 페이지 안에서 카메라 화면을 띄우고 한 장면을 잘라 씁니다 (셔터음 없음) ---------- */
+let camStream = null;
+async function openCam(){
+  if (!navigator.mediaDevices?.getUserMedia) return $("camIn").click();
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 2560 }, height: { ideal: 1920 } } });
+  } catch (e) {
+    setStatus($("status"), "카메라를 열 수 없어서 기본 카메라로 찍어요. (브라우저에서 카메라 권한을 허용하면 무음으로 찍을 수 있어요)");
+    return $("camIn").click();
+  }
+  const v = $("camVideo"); v.srcObject = camStream; $("camModal").hidden = false; document.body.style.overflow = "hidden";
+  try { await v.play(); } catch {}
+}
+function closeCam(){
+  if (camStream) camStream.getTracks().forEach(t => t.stop()); camStream = null;
+  $("camVideo").srcObject = null; $("camModal").hidden = true; document.body.style.overflow = "";
+}
+async function snap(){
+  const v = $("camVideo"); if (!v.videoWidth) return;
+  const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext("2d").drawImage(v, 0, 0);
+  const blob = await new Promise(r => c.toBlob(r, "image/jpeg", .92));
+  $("camFlash").classList.remove("on"); void $("camFlash").offsetWidth; $("camFlash").classList.add("on");
+  closeCam();
+  await addFiles([new File([blob], "camera.jpg", { type: "image/jpeg" })]);
+  if (photos.length && !$("analyzeBtn").disabled) $("analyzeBtn").click();
+}
+$("camBtn").onclick = openCam;
+$("camShot").onclick = snap;
+$("camClose").onclick = closeCam;
+document.addEventListener("visibilitychange", () => { if (document.hidden && camStream) closeCam(); });
 $("fileIn").onchange = e => addAndRead(e.target);
 const drop = $("drop");
 drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
@@ -89,6 +128,7 @@ $("analyzeBtn").onclick = async () => {
     thumbForSave = t.dataUrl;
     editingId = null;
     openReview(data && typeof data === "object" ? data : {}, "새 상품");
+    lookupExtras();
     setStatus(st, "다 읽었어요. 아래에서 확인 후 저장하세요.");
   } catch (e) {
     if (e.code === "login_required") return Gate.show("다시 로그인해 주세요.");
@@ -107,7 +147,9 @@ $("manualBtn").onclick = async () => {
 };
 
 /* ---------- review form ---------- */
+let reviewSeq = 0, savedFor = null;
 function openReview(data, tag){
+  reviewSeq++; setStatus($("extraStatus"), "");
   const form = $("form"); form.replaceChildren();
   const unsure = String(data.confidence || "").split(/[,\s]+/).filter(Boolean);
   FIELDS.forEach(([key, label, cls]) => {
@@ -125,6 +167,39 @@ function openReview(data, tag){
   $("review").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
 }
 $("form").addEventListener("submit", e => e.preventDefault());
+
+/* ---------- 제조사 정보·온라인 최저가 (웹 검색) ---------- */
+const formVal = k => ($("f_" + k) ? $("f_" + k).value.trim() : "");
+function fillEmpty(info){
+  Object.entries(info).forEach(([k, v]) => { const el = $("f_" + k); if (el && v && (!el.value.trim() || k.startsWith("lowPrice"))) { el.value = v; el.classList.remove("empty"); } });
+}
+async function lookupExtras(){
+  const seq = reviewSeq;
+  const rec = {}; FIELDS.forEach(([k]) => rec[k] = formVal(k));
+  const jobs = [];
+  if (rec.manufacturer) jobs.push(api("company", { name: rec.manufacturer, address: rec.manufacturerAddress })
+    .then(r => ({ mfrRevenue: r.info.revenue, mfrFounded: r.info.founded, mfrEmployees: r.info.employees, mfrSource: r.info.source })));
+  if (rec.productName) jobs.push(api("price", { record: rec }).then(r => r.info));
+  if (!jobs.length) return setStatus($("extraStatus"), "제조사나 제품명이 있어야 찾을 수 있어요.", true);
+  $("extraBtn").disabled = true;
+  setStatus($("extraStatus"), "제조사 정보와 온라인 최저가를 찾는 중… (30초~1분, 먼저 저장해도 돼요)");
+  const results = await Promise.allSettled(jobs);
+  $("extraBtn").disabled = false;
+  const found = Object.assign({}, ...results.filter(r => r.status === "fulfilled").map(r => r.value));
+  const failed = results.filter(r => r.status === "rejected").length;
+  if (seq === reviewSeq && !$("review").hidden) {
+    fillEmpty(found);
+    setStatus($("extraStatus"), failed ? "일부를 찾지 못했어요. 다시 찾기를 눌러 보세요." : "제조사 정보와 최저가를 채웠어요. 확인 후 저장하세요.", !!failed);
+  } else if (savedFor && savedFor.seq === seq) {
+    // 찾는 동안 이미 저장했으면, 비어 있던 칸만 채워서 저장한 항목을 고칩니다.
+    const it = items.find(x => x.id === savedFor.id); if (!it) return;
+    const merged = { ...it }; let changed = false;
+    Object.entries(found).forEach(([k, v]) => { if (v && !merged[k]) { merged[k] = v; changed = true; } });
+    if (!changed) return;
+    try { const { item } = await api("update", { id: it.id, record: merged }); items = items.map(x => x.id === item.id ? item : x); renderList(); } catch {}
+  }
+}
+$("extraBtn").onclick = lookupExtras;
 $("cancelBtn").onclick = () => { $("review").hidden = true; editingId = null; };
 
 $("saveBtn").onclick = async () => {
@@ -138,7 +213,7 @@ $("saveBtn").onclick = async () => {
       items = items.map(x => x.id === item.id ? item : x);
     } else {
       const { item } = await api("save", { record: rec, thumb: thumbForSave || "" });
-      items = [item, ...items];
+      items = [item, ...items]; savedFor = { seq: reviewSeq, id: item.id };
       photos = []; renderThumbs();
     }
     $("review").hidden = true; editingId = null; renderList();
@@ -167,6 +242,7 @@ function renderList(){
     const meta = document.createElement("div"); meta.className = "meta";
     const add = (lab, val) => { if (!val) return; if (meta.childNodes.length) meta.append(" · "); const b = document.createElement("b"); b.textContent = lab + " "; meta.append(b, val); };
     add("제조", it.manufacturer); add("판매", it.seller); add("수입", it.importer); add("☎", it.phone);
+    add("매출", it.mfrRevenue); add("직원", it.mfrEmployees); add("최저가", it.lowPrice ? it.lowPrice + (it.lowPriceStore ? " (" + it.lowPriceStore + ")" : "") : "");
     if (!meta.childNodes.length) meta.textContent = it.category || "";
     body.append(name, meta);
     const acts = document.createElement("div"); acts.className = "acts";
