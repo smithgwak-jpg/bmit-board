@@ -154,16 +154,16 @@ function renderRows() {
   for (const r of list) {
     const dd = dday(r.due_at, r.status);
     const cc = comments.filter(c => c.request_id === r.id).length;
-    tb.append(h('tr', { class: r.hidden ? 'hid' : null, tabindex: '0', onclick: () => openReq(r.id), onkeydown: e => { if (e.key === 'Enter') openReq(r.id); } },
+    tb.append(h('tr', { class: [r.hidden ? 'hid' : '', r.id === paneRid && wide() ? 'talking' : ''].join(' ').trim() || null, tabindex: '0', onclick: () => openReq(r.id), onkeydown: e => { if (e.key === 'Enter') openReq(r.id); } },
       h('td', { class: 'mono' }, code(r.no)),
-      h('td', null, h('div', { class: 'ttl' }, r.hidden ? h('span', { class: 'hid-tag' }, '임시저장') : null, r.title, photoCount(r) ? h('span', { class: 'badge' }, '첨부 ' + photoCount(r)) : null), r.category ? h('div', { class: 'cat' }, r.category) : null),
+      h('td', null, h('div', { class: 'ttl' }, r.hidden ? h('span', { class: 'hid-tag' }, '임시저장') : null, r.title, photoCount(r) ? attachBadge(r) : null), r.category ? h('div', { class: 'cat' }, r.category) : null),
       h('td', null, h('span', { class: 'pill st-' + r.status }, r.status)),
       h('td', null, h('span', { class: 'pr pr-' + r.priority }, r.priority)),
       h('td', null, r.requester || '—'),
       h('td', null, r.assignee || h('span', { style: 'color:var(--muted)' }, '미지정')),
       h('td', { class: 'mono' }, r.requested_at || '—'),
       h('td', { class: 'due mono' + (dd && dd.over ? ' over' : '') }, r.due_at || '—', dd ? h('small', null, dd.t) : null),
-      h('td', { class: 'chat-cell', title: '장학톡 열기', onclick: e => { e.stopPropagation(); openReq(r.id); setTimeout(() => { const l = $('chat-log'); if (l) { l.scrollIntoView({ block: 'start' }); $('cm-body').focus(); } }, 50); } }, cc ? h('span', { class: 'chat-n' }, '💬 ' + cc) : '—', unreadCount(r.id) ? h('span', { class: 'unread', title: '새 메시지' }, unreadCount(r.id)) : null)));
+      h('td', { class: 'chat-cell', title: '장학톡 열기', onclick: e => { e.stopPropagation(); talkTo(r.id); } }, cc ? h('span', { class: 'chat-n' }, '💬 ' + cc) : '—', unreadCount(r.id) ? h('span', { class: 'unread', title: '새 메시지' }, unreadCount(r.id)) : null)));
   }
 }
 
@@ -189,6 +189,7 @@ function thumbs(paths, onRemove) {
   return box;
 }
 function lightbox(paths, start) {
+  hidePeek();
   let i = start;
   const img = h('img', { alt: '첨부 사진' });
   const count = h('span', { class: 'lb-count' });
@@ -304,6 +305,31 @@ function dropzone(el, add) {
 window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('drop', e => e.preventDefault());
 const pastedImages = e => [...((e.clipboardData && e.clipboardData.files) || [])].filter(f => f.type.startsWith('image/'));
+function allImages(r) {
+  return [...(r.images_before || []), ...(r.images_after || []),
+    ...comments.filter(c => c.request_id === r.id).sort((a, b) => a.created_at.localeCompare(b.created_at)).flatMap(c => c.images || [])];
+}
+let peekEl = null;
+function attachBadge(r) {
+  const imgs = allImages(r), n = photoCount(r);
+  const b = h('span', { class: 'badge' + (imgs.length ? ' peekable' : ''), tabindex: imgs.length ? '0' : null, title: imgs.length ? '사진 미리보기 (누르면 크게)' : null },
+    imgs.length ? '사진 ' + imgs.length + (n > imgs.length ? ' · 파일 ' + (n - imgs.length) : '') : '파일 ' + n);
+  if (!imgs.length) return b;
+  const show = () => {
+    hidePeek();
+    const list = imgs.slice(0, 8);
+    peekEl = h('div', { class: 'peek', onmouseleave: hidePeek, onclick: e => e.stopPropagation() }, thumbs(list), h('div', { class: 'cat' }, (imgs.length > 8 ? '외 ' + (imgs.length - 8) + '장 · ' : '') + '사진을 누르면 크게 보기'));
+    document.body.append(peekEl);
+    const rc = b.getBoundingClientRect(), pw = peekEl.offsetWidth;
+    peekEl.style.left = Math.max(8, Math.min(rc.left, innerWidth - pw - 8)) + 'px';
+    peekEl.style.top = (rc.bottom + 6 + scrollY) + 'px';
+  };
+  b.addEventListener('mouseenter', show);
+  b.addEventListener('click', e => { e.stopPropagation(); hidePeek(); lightbox(imgs, 0); });
+  b.addEventListener('mouseleave', () => setTimeout(() => { if (peekEl && !peekEl.matches(':hover')) hidePeek(); }, 150));
+  return b;
+}
+function hidePeek() { if (peekEl) { peekEl.remove(); peekEl = null; } }
 function photoCount(r) {
   return (r.images_before || []).length + (r.images_after || []).length + (r.files || []).length +
     comments.filter(c => c.request_id === r.id).reduce((n, c) => n + (c.images || []).length + (c.files || []).length, 0);
@@ -378,20 +404,9 @@ function renderPanel() {
   const body = h('div', { class: 'p-body' }, r.hidden ? h('div', { class: 'hidden-note' }, '임시저장(숨김) 상태입니다. 장학문구사 참여자만 보고, 비엠아이티에는 보이지 않습니다. 다 쓰면 "공개하고 저장"을 눌러 주세요.') : null, form);
   if (!creating) {
     if (r.updated_at) body.append(h('div', { class: 'cat' }, '마지막 수정 ' + fmtTime(r.updated_at) + (r.updated_by ? ' · ' + nameOf(r.updated_by) : '')));
-    chatCol = h('section', { class: 'chat-col', 'aria-label': '장학톡' }, h('div', { class: 'chat-head' }, h('b', null, '💬 장학톡'), h('span', { class: 'cat' }, '이 건에 대한 장학문구사 · 비엠아이티 대화')));
-    const log = h('div', { class: 'chat', id: 'chat-log' });
-    chatCol.append(log);
-    const cpick = picker('📎 파일·사진', false, true);
-    const ta = h('textarea', { id: 'cm-body', rows: 1, placeholder: '메시지 입력', maxlength: 4000,
-      oninput: () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; },
-      onkeydown: e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } },
-      onpaste: e => { const fs = pastedImages(e); if (fs.length) { e.preventDefault(); cpick.add(fs); } } });
-    const form = dropzone(h('form', { class: 'chat-form', onsubmit: e => { e.preventDefault(); addComment(r.id, ta, cpick, form.querySelector('.send')); } },
-      cpick.el,
-      h('div', { class: 'chat-input' }, ta, h('button', { class: 'btn primary send', type: 'submit' }, '보내기')),
-      h('div', { class: 'cat' }, orgLabel(me.side, me.team) + ' · ' + (me.name || email) + ' 이름으로 보내집니다 · Enter 보내기, Shift+Enter 줄바꿈')), cpick.add);
-    chatCol.append(form);
-    setTimeout(() => renderChat(r.id, true), 0);
+    const pc = buildChat(r.id);
+    chatCol = h('section', { class: 'chat-col', 'aria-label': '장학톡' }, h('div', { class: 'chat-head' }, h('b', null, '💬 장학톡'), h('span', { class: 'cat' }, '이 건에 대한 장학문구사 · 비엠아이티 대화')), pc.log, pc.form);
+    setTimeout(() => pc.update(true), 0);
   }
   $('panel').replaceChildren(
     h('div', { class: 'p-head' },
@@ -409,33 +424,78 @@ function markSeen(rid) {
   const cs = comments.filter(c => c.request_id === rid);
   if (cs.length) try { localStorage.setItem(seenKey(rid), cs.map(c => c.created_at).sort().pop()); } catch (e) {}
 }
-let chatShown = { rid: null, n: -1 };
-function renderChat(rid, force) {
-  const log = $('chat-log'); if (!log) return;
-  const cs = comments.filter(c => c.request_id === rid).sort((a, b) => a.created_at.localeCompare(b.created_at));
-  if (!force && chatShown.rid === rid && chatShown.n === cs.length) return;
-  const nearBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
-  chatShown = { rid, n: cs.length };
-  log.replaceChildren();
-  if (!cs.length) log.append(h('div', { class: 'chat-empty' }, '아직 대화가 없습니다. 회의 내용, 질문, 견적, 일정 변경 등을 남겨 보세요.'));
-  let day = '';
-  for (const c of cs) {
-    const d = new Date(c.created_at);
-    const dd = d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + '일월화수목금토'[d.getDay()] + '요일';
-    if (dd !== day) { day = dd; log.append(h('div', { class: 'chat-day' }, h('span', null, dd))); }
-    const mine = c.author_email === email;
-    const time = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-    log.append(h('div', { class: 'msg' + (mine ? ' mine' : '') + (c.side === 'BMIT' ? ' bmit' : ' ours') },
-      mine ? null : h('div', { class: 'who' }, h('b', null, c.author_name || c.author_email), ' ', h('span', null, orgLabel(c.side, c.author_team))),
-      h('div', { class: 'line' },
-        h('div', { class: 'bubble' },
-          c.body ? h('div', { class: 'txt' }, c.body) : null,
-          (c.images || []).length ? thumbs(c.images) : null,
-          (c.files || []).length ? fileList(c.files) : null),
-        h('div', { class: 'side-info' }, h('span', { class: 'time' }, time), mine || isAdmin() ? cmDel(c) : null))));
-  }
-  if (force || nearBottom) log.scrollTop = log.scrollHeight;
-  markSeen(rid);
+const chats = new Set();
+function buildChat(rid) {
+  const log = h('div', { class: 'chat' });
+  const cpick = picker('📎 파일·사진', false, true);
+  const ta = h('textarea', { class: 'cm-body', rows: 1, placeholder: '메시지 입력', maxlength: 4000,
+    oninput: () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; },
+    onkeydown: e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } },
+    onpaste: e => { const fs = pastedImages(e); if (fs.length) { e.preventDefault(); cpick.add(fs); } } });
+  const form = dropzone(h('form', { class: 'chat-form', onsubmit: e => { e.preventDefault(); addComment(rid, ta, cpick, form.querySelector('.send')); } },
+    cpick.el,
+    h('div', { class: 'chat-input' }, ta, h('button', { class: 'btn primary send', type: 'submit' }, '보내기')),
+    h('div', { class: 'cat' }, orgLabel(me.side, me.team) + ' · ' + (me.name || email) + ' 이름으로 보내집니다 · Enter 보내기, Shift+Enter 줄바꿈')), cpick.add);
+  let shown = -1;
+  const inst = { rid, log, form, ta, update(force) {
+    if (!log.isConnected) { chats.delete(inst); return; }
+    const cs = comments.filter(c => c.request_id === rid).sort((a, b) => a.created_at.localeCompare(b.created_at));
+    if (!force && shown === cs.length) return;
+    const nearBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+    shown = cs.length;
+    log.replaceChildren();
+    if (!cs.length) log.append(h('div', { class: 'chat-empty' }, '아직 대화가 없습니다. 회의 내용, 질문, 견적, 일정 변경 등을 남겨 보세요.'));
+    let day = '';
+    for (const c of cs) {
+      const d = new Date(c.created_at);
+      const dd = d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + '일월화수목금토'[d.getDay()] + '요일';
+      if (dd !== day) { day = dd; log.append(h('div', { class: 'chat-day' }, h('span', null, dd))); }
+      const mine = c.author_email === email;
+      const time = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      log.append(h('div', { class: 'msg' + (mine ? ' mine' : '') + (c.side === 'BMIT' ? ' bmit' : ' ours') },
+        mine ? null : h('div', { class: 'who' }, h('b', null, c.author_name || c.author_email), ' ', h('span', null, orgLabel(c.side, c.author_team))),
+        h('div', { class: 'line' },
+          h('div', { class: 'bubble' },
+            c.body ? h('div', { class: 'txt' }, c.body) : null,
+            (c.images || []).length ? thumbs(c.images) : null,
+            (c.files || []).length ? fileList(c.files) : null),
+          h('div', { class: 'side-info' }, h('span', { class: 'time' }, time), mine || isAdmin() ? cmDel(c) : null))));
+    }
+    if (force || nearBottom) log.scrollTop = log.scrollHeight;
+    markSeen(rid);
+  } };
+  chats.add(inst);
+  return inst;
+}
+function updateChats() { for (const c of [...chats]) c.update(); }
+
+/* 목록 오른쪽 장학톡 */
+let paneRid = null, paneChat = null;
+const wide = () => window.matchMedia('(min-width:1180px)').matches;
+function lastTalk(rid) { return comments.filter(c => c.request_id === rid).map(c => c.created_at).sort().pop() || ''; }
+function renderPane(force) {
+  const pane = $('talk-pane'); if (!pane) return;
+  if (!reqs.length) { pane.replaceChildren(h('div', { class: 'chat-head' }, h('b', null, '💬 장학톡')), h('div', { class: 'chat-empty pane-empty' }, '요청을 등록하면 건마다 대화할 수 있습니다.')); paneChat = null; return; }
+  if (!paneRid || !reqs.some(r => r.id === paneRid)) paneRid = [...reqs].sort((a, b) => lastTalk(b.id).localeCompare(lastTalk(a.id)) || (b.no - a.no))[0].id;
+  const r = reqs.find(x => x.id === paneRid);
+  if (!force && paneChat && paneChat.rid === paneRid && paneChat.log.isConnected) { paneChat.update(); syncPaneSel(); return; }
+  paneChat = buildChat(paneRid);
+  const sel = h('select', { class: 'pane-sel', 'aria-label': '대화할 요청 고르기', onchange: e => { paneRid = e.target.value; renderPane(true); renderRows(); } });
+  for (const x of reqs) { const u = unreadCount(x.id); sel.append(h('option', { value: x.id, selected: x.id === paneRid }, code(x.no) + ' ' + x.title + (u ? '  (새 메시지 ' + u + ')' : ''))); }
+  pane.replaceChildren(
+    h('div', { class: 'chat-head pane-head' },
+      h('div', { class: 'row', style: 'justify-content:space-between;width:100%' }, h('b', null, '💬 장학톡'), h('button', { class: 'btn', type: 'button', onclick: () => openReq(paneRid) }, '상세 보기')),
+      sel),
+    paneChat.log, paneChat.form);
+  paneChat.update(true);
+}
+function syncPaneSel() {
+  const sel = document.querySelector('#talk-pane .pane-sel'); if (!sel) return;
+  for (const o of sel.options) { const x = reqs.find(r => r.id === o.value); if (x) { const u = x.id === paneRid ? 0 : unreadCount(x.id); o.textContent = code(x.no) + ' ' + x.title + (u ? '  (새 메시지 ' + u + ')' : ''); } }
+}
+function talkTo(rid) {
+  if (wide()) { paneRid = rid; renderPane(true); renderRows(); paneChat && paneChat.ta.focus(); }
+  else { openReq(rid); setTimeout(() => { const l = document.querySelector('#panel .chat-col'); if (l) { l.scrollIntoView({ block: 'start' }); l.querySelector('textarea').focus(); } }, 50); }
 }
 function nameOf(em) { const m = members.find(x => x.email === em); return m ? m.name || em : em; }
 function confirmBtn(label, armedLabel, action, style) {
@@ -554,7 +614,7 @@ function render() {
   $('cnt-req').textContent = reqs.length; $('cnt-sv').textContent = items.length; $('cnt-mem').textContent = members.length;
   $('tab-mem').hidden = !isAdmin();
   if (!$('panel').hidden && !creating && !dirty && !$('panel').contains(document.activeElement)) renderPanel();
-  else if (!$('panel').hidden && openId) renderChat(openId);
+  updateChats(); renderPane();
 }
 function showTab(t) {
   for (const k of ['req', 'sv', 'mem']) { $('tab-' + k).setAttribute('aria-selected', String(k === t)); $('view-' + k).hidden = k !== t; }

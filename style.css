@@ -351,3 +351,41 @@ aside.panel:has(.p-main.with-chat){width:min(1280px,100%)}
   .chat-col{border-left:0;border-top:2px solid #222}
   .chat-col .chat{flex:none;height:min(460px,60vh)}
 }
+/* 목록 오른쪽 장학톡 */
+.wrap:has(.talk-pane){max-width:1640px}
+.req-layout{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:16px;align-items:start}
+.req-main{display:flex;flex-direction:column;gap:12px;min-width:0}
+.talk-pane{position:sticky;top:12px;height:calc(100vh - 24px);display:flex;flex-direction:column;border:1px solid var(--line-strong);background:#e9edf2;min-height:420px}
+.talk-pane .chat{flex:1;height:auto;min-height:0;border:0;background:transparent}
+.talk-pane .chat-form{margin:0;border:0;border-top:1px solid var(--line-strong)}
+.pane-head{flex-direction:column;align-items:stretch;gap:8px}
+.pane-head .btn{height:28px;font-size:12px;padding:0 10px}
+.pane-sel{width:100%;height:34px;border:1px solid var(--line-strong);background:#fff;padding:0 8px;font-size:13px}
+.pane-empty{padding:40px 16px}
+tbody tr.talking td{background:var(--accent-soft)}
+tbody tr.talking td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+@media (max-width:1179px){.req-layout{display:block}.talk-pane{display:none}}
+/* 사진 미리보기 팝업 */
+.badge.peekable{cursor:zoom-in}
+.badge.peekable:hover{background:var(--accent);color:#fff}
+.peek{position:absolute;z-index:40;background:#fff;border:1px solid var(--line-strong);box-shadow:0 8px 28px rgba(0,0,0,.18);padding:10px;max-width:min(560px,calc(100vw - 16px));display:flex;flex-direction:column;gap:6px}
+.peek .thumb{width:120px;height:120px}
+/* 목록 오른쪽 장학톡 */
+.wrap:has(.talk-pane){max-width:1640px}
+.req-layout{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:16px;align-items:start}
+.req-main{display:flex;flex-direction:column;gap:12px;min-width:0}
+.talk-pane{position:sticky;top:12px;height:calc(100vh - 24px);display:flex;flex-direction:column;border:1px solid var(--line-strong);background:#e9edf2;min-height:420px}
+.talk-pane .chat{flex:1;height:auto;min-height:0;border:0;background:transparent}
+.talk-pane .chat-form{margin:0;border:0;border-top:1px solid var(--line-strong)}
+.pane-head{flex-direction:column;align-items:stretch;gap:8px}
+.pane-head .btn{height:28px;font-size:12px;padding:0 10px}
+.pane-sel{width:100%;height:34px;border:1px solid var(--line-strong);background:#fff;padding:0 8px;font-size:13px}
+.pane-empty{padding:40px 16px}
+tbody tr.talking td{background:var(--accent-soft)}
+tbody tr.talking td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+@media (max-width:1179px){.req-layout{display:block}.talk-pane{display:none}}
+/* 사진 미리보기 팝업 */
+.badge.peekable{cursor:zoom-in}
+.badge.peekable:hover{background:var(--accent);color:#fff}
+.peek{position:absolute;z-index:40;background:#fff;border:1px solid var(--line-strong);box-shadow:0 8px 28px rgba(0,0,0,.18);padding:10px;max-width:min(560px,calc(100vw - 16px));display:flex;flex-direction:column;gap:6px}
+.peek .thumb{width:120px;height:120px}
