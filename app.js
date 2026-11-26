@@ -250,7 +250,7 @@ function photoCount(r) {
 /* ---------- 상세 패널 ---------- */
 let photoSlots = null;
 const field = (label, el) => h('label', { class: 'f' }, label, el);
-const BMIT_STAFF = ['허미라 책임', '함만식 선임'];
+const BMIT_STAFF = ['허미라 책임', '함만식 수석'];
 function asgSelect(val) {
   const names = [...BMIT_STAFF];
   for (const m of members) if (m.side === 'BMIT' && m.name && !names.some(n => n.startsWith(m.name))) names.push(m.name);
