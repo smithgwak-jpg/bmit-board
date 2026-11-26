@@ -374,29 +374,30 @@ function renderPanel() {
         isOurs() ? h('button', { class: 'btn', type: 'submit', 'data-hide': '1', title: '비엠아이티에는 보이지 않게 저장합니다' }, creating || r.hidden ? '임시저장' : '숨기기') : null,
         saveMsg),
       !creating && isAdmin() ? delBtn(r) : null));
+  let chatCol = null;
   const body = h('div', { class: 'p-body' }, r.hidden ? h('div', { class: 'hidden-note' }, '임시저장(숨김) 상태입니다. 장학문구사 참여자만 보고, 비엠아이티에는 보이지 않습니다. 다 쓰면 "공개하고 저장"을 눌러 주세요.') : null, form);
   if (!creating) {
     if (r.updated_at) body.append(h('div', { class: 'cat' }, '마지막 수정 ' + fmtTime(r.updated_at) + (r.updated_by ? ' · ' + nameOf(r.updated_by) : '')));
-    body.append(h('h3', { class: 'sec chat-title' }, '장학톡', h('span', { class: 'cat' }, ' 이 건에 대한 장학문구사 · 비엠아이티 대화')));
+    chatCol = h('section', { class: 'chat-col', 'aria-label': '장학톡' }, h('div', { class: 'chat-head' }, h('b', null, '💬 장학톡'), h('span', { class: 'cat' }, '이 건에 대한 장학문구사 · 비엠아이티 대화')));
     const log = h('div', { class: 'chat', id: 'chat-log' });
-    body.append(log);
+    chatCol.append(log);
     const cpick = picker('📎 파일·사진', false, true);
-    const ta = h('textarea', { id: 'cm-body', rows: 1, placeholder: '메시지 입력 (Enter 보내기, Shift+Enter 줄바꿈)', maxlength: 4000,
+    const ta = h('textarea', { id: 'cm-body', rows: 1, placeholder: '메시지 입력', maxlength: 4000,
       oninput: () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; },
       onkeydown: e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } },
       onpaste: e => { const fs = pastedImages(e); if (fs.length) { e.preventDefault(); cpick.add(fs); } } });
     const form = dropzone(h('form', { class: 'chat-form', onsubmit: e => { e.preventDefault(); addComment(r.id, ta, cpick, form.querySelector('.send')); } },
       cpick.el,
       h('div', { class: 'chat-input' }, ta, h('button', { class: 'btn primary send', type: 'submit' }, '보내기')),
-      h('div', { class: 'cat' }, orgLabel(me.side, me.team) + ' · ' + (me.name || email) + ' 이름으로 보내집니다')), cpick.add);
-    body.append(form);
+      h('div', { class: 'cat' }, orgLabel(me.side, me.team) + ' · ' + (me.name || email) + ' 이름으로 보내집니다 · Enter 보내기, Shift+Enter 줄바꿈')), cpick.add);
+    chatCol.append(form);
     setTimeout(() => renderChat(r.id, true), 0);
   }
   $('panel').replaceChildren(
     h('div', { class: 'p-head' },
       h('div', { style: 'min-width:0' }, h('div', { class: 'eyebrow mono' }, creating ? '새 요청' : code(r.no)), h('h2', { style: 'font-size:17px' }, creating ? 'BMIT에 새 개발 요청' : r.title)),
       h('button', { class: 'btn', onclick: closePanel }, '닫기')),
-    body);
+    h('div', { class: 'p-main' + (chatCol ? ' with-chat' : '') }, body, chatCol));
   $('panel').hidden = false; $('scrim').hidden = false;
 }
 const seenKey = rid => 'bmit-seen-' + rid;

@@ -335,3 +335,19 @@ h3.chat-title{display:flex;align-items:baseline;gap:8px}
 .chat{flex:none}
 .chat-cell{cursor:pointer}
 .chat-cell:hover .chat-n{text-decoration:underline}
+/* 장학톡을 상세 옆 채팅창으로 */
+aside.panel:has(.p-main.with-chat){width:min(1280px,100%)}
+.p-main{flex:1;min-height:0;display:flex;flex-direction:column}
+.p-main > .p-body{flex:1;min-height:0}
+.p-main.with-chat{display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,440px)}
+.chat-col{display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--line-strong);background:#e9edf2}
+.chat-head{display:flex;align-items:baseline;gap:8px;padding:12px 16px;background:#fff;border-bottom:1px solid var(--line-strong);flex-wrap:wrap}
+.chat-head b{font-size:15px;color:var(--accent)}
+.chat-col .chat{flex:1;height:auto;min-height:0;border:0;background:transparent}
+.chat-col .chat-form{margin:0;border:0;border-top:1px solid var(--line-strong)}
+@media (max-width:900px){
+  .p-main.with-chat{display:flex;flex-direction:column;overflow-y:auto}
+  .p-main.with-chat > .p-body{flex:none;overflow:visible}
+  .chat-col{border-left:0;border-top:2px solid #222}
+  .chat-col .chat{flex:none;height:min(460px,60vh)}
+}
