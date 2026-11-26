@@ -145,7 +145,8 @@ let rowClickT = null;
 function renderRows() {
   const tb = $('rows'); tb.replaceChildren();
   const ql = query.trim().toLowerCase();
-  const list = reqs.filter(r => (filter === '전체' || r.status === filter) &&
+  const byDate = (a, b) => (b.requested_at || '').localeCompare(a.requested_at || '') || (b.no - a.no);
+  const list = [...reqs].sort(byDate).filter(r => (filter === '전체' || r.status === filter) &&
     (!ql || [r.title, r.category, r.requester, r.assignee, code(r.no)].join(' ').toLowerCase().includes(ql)));
   if (!list.length) {
     tb.append(h('tr', null, h('td', { colspan: 7, class: 'empty' },
