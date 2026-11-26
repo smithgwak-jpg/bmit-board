@@ -62,8 +62,13 @@ function renderThumbs(){
   });
   $("analyzeBtn").disabled = !photos.length;
 }
-$("camIn").onchange = e => { addFiles(e.target.files); e.target.value = ""; };
-$("fileIn").onchange = e => { addFiles(e.target.files); e.target.value = ""; };
+// 사진을 찍거나 고르면 바로 정보 읽기를 시작합니다.
+async function addAndRead(input){
+  const files = input.files; await addFiles(files); input.value = "";
+  if (photos.length && !$("analyzeBtn").disabled) $("analyzeBtn").click();
+}
+$("camIn").onchange = e => addAndRead(e.target);
+$("fileIn").onchange = e => addAndRead(e.target);
 const drop = $("drop");
 drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
 drop.addEventListener("dragleave", () => drop.classList.remove("over"));
