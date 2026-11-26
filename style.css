@@ -411,3 +411,38 @@ tbody tr.talking td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
 .talk-pane[data-n="3"] .chat-form .picker .cat{display:none}
 .talk-pane[data-n="3"] .chat-input textarea{min-height:34px;padding:6px 8px}
 .talk-pane[data-n="3"] .chat-input .send{height:34px}
+/* 대화방 목록 */
+.room-search-wrap{padding:8px 10px;background:#fff;border-bottom:1px solid var(--line)}
+.room-search{width:100%;height:34px;border:1px solid var(--line-strong);padding:0 10px;font-size:13px;background:#f7f8fa}
+.rooms{flex:1;min-height:0;overflow-y:auto;background:#fff}
+.room{display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;border:0;border-bottom:1px solid #eef0f3;background:#fff;text-align:left;cursor:pointer;color:var(--fg)}
+.room:hover{background:#f5f7fa}
+.room.hid{opacity:.6}
+.avatar{flex:none;width:46px;height:46px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;line-height:1.05;letter-spacing:-.02em}
+.avatar small{font-size:9px;font-weight:700;opacity:.85}
+.st-bg-요청{background:#5d6779}.st-bg-검토{background:#b07a12}.st-bg-진행{background:#00467f}.st-bg-완료{background:#2e7d4f}.st-bg-보류{background:#7a5e96}
+.room-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.room-name{display:flex;align-items:baseline;gap:6px;min-width:0}
+.room-name b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.room-n{flex:none;font-size:12px;color:var(--muted)}
+.room-prev{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.room.has-unread .room-prev{color:var(--fg)}
+.room-side{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px;align-self:flex-start;padding-top:2px}
+.room-time{font-size:11px;color:var(--muted);white-space:nowrap}
+.room-side .unread{margin:0}
+.pane-top .back{background:none;border:0;color:var(--accent);font-weight:700;font-size:14px;padding:0;cursor:pointer}
+.pane-top .back:hover{text-decoration:underline}
+/* 대화방 맨 위 요청 카드 */
+.req-card{background:#fff;border:1px solid var(--line-strong);border-top:3px solid var(--accent);padding:10px 12px;display:flex;flex-direction:column;gap:6px;flex:none}
+.rc-top{display:flex;align-items:center;gap:8px}
+.rc-code{font-size:12px;color:var(--muted);font-weight:600}
+.rc-top .pr{margin-left:auto}
+.rc-title{font-weight:700;font-size:14.5px;line-height:1.4}
+.rc-meta{font-size:12px;color:var(--muted)}
+.rc-desc{white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.55;background:#f7f8fa;padding:8px 10px;border:1px solid var(--line)}
+.rc-desc.clamp{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.rc-more{align-self:flex-start;font-size:12px}
+.req-card .thumbs{gap:4px}
+.req-card .thumb{width:72px;height:72px}
+.req-card .linklist{font-size:12px}
+.topbar-in{max-width:1640px}
