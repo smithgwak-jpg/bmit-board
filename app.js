@@ -154,9 +154,9 @@ function renderRows() {
   for (const r of list) {
     const dd = dday(r.due_at, r.status);
     const cc = comments.filter(c => c.request_id === r.id).length;
-    tb.append(h('tr', { tabindex: '0', onclick: () => openReq(r.id), onkeydown: e => { if (e.key === 'Enter') openReq(r.id); } },
+    tb.append(h('tr', { class: r.hidden ? 'hid' : null, tabindex: '0', onclick: () => openReq(r.id), onkeydown: e => { if (e.key === 'Enter') openReq(r.id); } },
       h('td', { class: 'mono' }, code(r.no)),
-      h('td', null, h('div', { class: 'ttl' }, r.title, photoCount(r) ? h('span', { class: 'badge' }, '사진 ' + photoCount(r)) : null), r.category ? h('div', { class: 'cat' }, r.category) : null),
+      h('td', null, h('div', { class: 'ttl' }, r.hidden ? h('span', { class: 'hid-tag' }, '임시저장') : null, r.title, photoCount(r) ? h('span', { class: 'badge' }, '사진 ' + photoCount(r)) : null), r.category ? h('div', { class: 'cat' }, r.category) : null),
       h('td', null, h('span', { class: 'pill st-' + r.status }, r.status)),
       h('td', null, h('span', { class: 'pr pr-' + r.priority }, r.priority)),
       h('td', null, r.requester || '—'),
@@ -280,7 +280,7 @@ function renderPanel() {
   photoSlots = { before: slot('images_before', '변경 전', '지금 화면, 문제 상황'), after: slot('images_after', '변경 후', '원하는 모습, 완료 결과') };
   const inp = (id, v, type = 'text', extra = {}) => h('input', Object.assign({ id, type, value: v || '', oninput: () => { dirty = true; } }, extra));
   const saveMsg = h('span', { class: 'saved' });
-  const form = h('form', { style: 'display:flex;flex-direction:column;gap:12px', onsubmit: e => { e.preventDefault(); saveReq(saveMsg); } },
+  const form = h('form', { style: 'display:flex;flex-direction:column;gap:12px', onsubmit: e => { e.preventDefault(); saveReq(e.submitter && e.submitter.dataset.hide === '1'); } },
     field('요청 제목', inp('p-title', r.title, 'text', { required: true, maxlength: 200, placeholder: '예: 회원가입 화면 휴대폰 인증 추가' })),
     h('div', { class: 'grid2' },
       field('상태', sel('p-status', STATUSES, r.status)),
@@ -297,9 +297,12 @@ function renderPanel() {
     (r.links || []).length ? h('div', { class: 'linklist' }, r.links.map(u => /^https?:\/\//i.test(u) ? h('a', { href: u, target: '_blank', rel: 'noopener noreferrer' }, u) : h('span', null, u))) : null,
     h('datalist', { id: 'cats' }, CATS.map(c => h('option', { value: c }))),
     h('div', { class: 'row end' },
-      h('div', { class: 'row' }, h('button', { class: 'btn primary', type: 'submit' }, creating ? '요청 등록' : '변경 저장'), saveMsg),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn primary', type: 'submit', 'data-hide': '0' }, creating ? '요청 등록' : r.hidden ? '공개하고 저장' : '변경 저장'),
+        isOurs() ? h('button', { class: 'btn', type: 'submit', 'data-hide': '1', title: '비엠아이티에는 보이지 않게 저장합니다' }, creating || r.hidden ? '임시저장' : '숨기기') : null,
+        saveMsg),
       !creating && isAdmin() ? delBtn(r) : null));
-  const body = h('div', { class: 'p-body' }, form);
+  const body = h('div', { class: 'p-body' }, r.hidden ? h('div', { class: 'hidden-note' }, '임시저장(숨김) 상태입니다. 장학문구사 참여자만 보고, 비엠아이티에는 보이지 않습니다. 다 쓰면 "공개하고 저장"을 눌러 주세요.') : null, form);
   if (!creating) {
     if (r.updated_at) body.append(h('div', { class: 'cat' }, '마지막 수정 ' + fmtTime(r.updated_at) + (r.updated_by ? ' · ' + nameOf(r.updated_by) : '')));
     body.append(h('h3', { class: 'sec' }, '협의 기록'));
@@ -338,15 +341,18 @@ function confirmBtn(label, armedLabel, action, style) {
 }
 const delBtn = r => confirmBtn('삭제', '한 번 더 누르면 삭제', async () => { await run(sb.from('requests').delete().eq('id', r.id), '삭제하지 못했습니다'); closePanel(); });
 const cmDel = c => confirmBtn('지우기', '한 번 더', () => run(sb.from('comments').delete().eq('id', c.id), '기록을 지우지 못했습니다'), 'padding:0 8px;font-size:11px;margin-left:auto');
-async function saveReq(msg) {
+const isOurs = () => !!(me && me.side === '우리');
+async function saveReq(hide) {
   const v = id => $(id).value.trim();
   const data = { title: v('p-title'), category: v('p-cat'), status: $('p-status').value, priority: $('p-prio').value,
     requester: v('p-req'), assignee: v('p-asg'), requested_at: $('p-reqat').value || null, due_at: $('p-due').value || null, description: $('p-desc').value,
+    hidden: !!hide,
     links: $('p-links').value.split('\n').map(x => x.trim()).filter(Boolean).map(x => /^[\w.-]+\.[a-z]{2,}/i.test(x) && !/^https?:/i.test(x) ? 'https://' + x : x).slice(0, 20) };
   if (!data.title) return;
   const slots = photoSlots;
   const busy = slots.before.pick.files.length + slots.after.pick.files.length;
-  const btn = $('panel').querySelector('form button[type=submit]');
+  const btn = $('panel').querySelector('form button[data-hide="' + (hide ? 1 : 0) + '"]');
+  const label = btn ? btn.textContent : '';
   const wasNew = creating;
   if (btn) { btn.disabled = true; btn.textContent = busy ? '사진 올리는 중…' : '저장 중…'; }
   try {
@@ -360,8 +366,8 @@ async function saveReq(msg) {
     await run(sb.from('requests').update(Object.assign(data, upd)).eq('id', id), '저장하지 못했습니다');
     const i = reqs.findIndex(x => x.id === id); if (i >= 0) reqs[i] = Object.assign({}, reqs[i], data);
     dirty = false; closePanel(); render();
-    toast(wasNew ? '요청을 등록했습니다' : '저장했습니다');
-  } catch (e) { if (btn) { btn.disabled = false; btn.textContent = wasNew ? '요청 등록' : '변경 저장'; } }
+    toast(hide ? (wasNew ? '임시저장했습니다 (비엠아이티에는 안 보임)' : '숨겼습니다 (비엠아이티에는 안 보임)') : wasNew ? '요청을 등록했습니다' : '저장했습니다');
+  } catch (e) { if (btn) { btn.disabled = false; btn.textContent = label; } }
 }
 async function addComment(rid, ta, pick, btn) {
   const body = ta.value.trim(); if (!body && !pick.files.length) return;
